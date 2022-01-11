@@ -1,16 +1,33 @@
-# This is a sample Python script.
+import numpy as np
+from util.util_func import *
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+from models.kinematic.kinematic import Kin_Model
+
+## Warthog dimensions
+k1 = 0
+k2 = 0.5826
+k3 = 0.24979
+k4 = 0.457367
+k5 = 0
+k6 = 0.012977
+
+kin_model = Kin_Model()
+
+kin_model.add_body_frame(name="Body")
+
+euler = np.array([0, 0, 0])
+p = np.array([k1, k2, -k3])
+kin_model.add_joint_frame(name="DL", parent_name="Body", dof_string="RY", is_actuated=False,
+                          rigid_transform_parent_no_disp=pose_to_transform(euler, p))
+euler = np.array([0, 0, 0])
+p = np.array([k4, k5, -k6])
+kin_model.add_wheel_frame(name="FL", parent_name="DL", dof_string="RY", is_actuated=True,
+                          rigid_transform_parent_no_disp=pose_to_transform(euler, p))
+euler = np.array([0, 0, 0])
+p = np.array([-k4, k5, -k6])
+kin_model.add_wheel_frame(name="RL", parent_name="DL", dof_string="RY", is_actuated=True,
+                          rigid_transform_parent_no_disp=pose_to_transform(euler, p))
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+print(kin_model.frames[2].name)
+print(kin_model.frames[2].rigid_transform_parent_joint_nodisp)
