@@ -1,5 +1,6 @@
 venv/
 stl/
+data/
 
 .idea/
 __pycache__/

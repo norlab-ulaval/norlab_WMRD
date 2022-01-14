@@ -28,6 +28,11 @@ rear_left_wheel_mesh = mesh.Mesh.from_file('../stl/warthog/' + locomotion)
 front_right_wheel_mesh = mesh.Mesh.from_file('../stl/warthog/' + locomotion)
 rear_right_wheel_mesh = mesh.Mesh.from_file('../stl/warthog/' + locomotion)
 
+if locomotion == 'tracks.stl':
+    print('test')
+    rear_left_wheel_mesh.rotate([0.0, 0.0, 0.5], math.radians(180))
+    rear_right_wheel_mesh.rotate([0.0, 0.0, 0.5], math.radians(180))
+
 # position and rotate all meshes to fit dimensions
 chassis_mesh.z -= 0.27218
 left_drive_mesh.rotate([0.0, 0.0, 0.5], math.radians(90))
@@ -41,7 +46,6 @@ front_left_wheel_mesh.x += k4
 front_left_wheel_mesh.y += k2
 front_left_wheel_mesh.z -= (k3 - k6)
 rear_left_wheel_mesh.rotate([0.5, 0.0, 0.0], math.radians(-90))
-rear_left_wheel_mesh.rotate([0.0, 0.0, 0.5], math.radians(180))
 rear_left_wheel_mesh.x -= k4
 rear_left_wheel_mesh.y += k2
 rear_left_wheel_mesh.z -= (k3 - k6)
@@ -50,10 +54,11 @@ front_right_wheel_mesh.x += k4
 front_right_wheel_mesh.y -= k2
 front_right_wheel_mesh.z -= (k3 - k6)
 rear_right_wheel_mesh.rotate([0.5, 0.0, 0.0], math.radians(-90))
-rear_right_wheel_mesh.rotate([0.0, 0.0, 0.5], math.radians(180))
 rear_right_wheel_mesh.x -= k4
 rear_right_wheel_mesh.y -= k2
 rear_right_wheel_mesh.z -= (k3 - k6)
+
+
 
 # Add all meshes to plot
 body_alpha = 0.5

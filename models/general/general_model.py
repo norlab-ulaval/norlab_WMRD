@@ -1,18 +1,12 @@
 import math
-from pypointmatcher import pointmatcher, pointmatchersupport
 import numpy as np
 
-class Kin_Model():
+class Gen_Model():
     def __init__(self):
-        self.PM = pointmatcher.PointMatcher
-        matcher_params = pointmatchersupport.Parametrizable.Parameters()
-        matcher_params["maxDist"] = "1.0"
-        matcher_params["knn"] = "10"
-        self.matcher = self.PM.get().MatcherRegistrar.create("KDTreeMatcher", matcher_params)
-
         self.number_frames = 0
         self.number_wheels = 0
         self.number_actuated = 0
+        self.wheel_radius = 0
 
         self.frames = []
 
