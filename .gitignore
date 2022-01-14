@@ -1,3 +1,6 @@
 venv/
+stl/
+
 .idea/
 __pycache__/
+
