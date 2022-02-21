@@ -69,32 +69,6 @@ def up_propa_mat(mat, ang):
     
     return mat
 
-def euler_to_rotmat(euler):
-    R = np.empty((3,3))
-    s_roll = np.sin(euler[0])
-    c_roll = np.cos(euler[0])
-    s_pitch = np.sin(euler[1])
-    c_pitch = np.cos(euler[1])
-    s_yaw = np.sin(euler[2])
-    c_yaw = np.cos(euler[2])
-
-    R[0,0] = c_pitch * c_yaw
-    R[0, 1] = c_yaw * s_pitch * s_roll - c_roll * s_yaw
-    R[0, 2] = s_roll * s_yaw + c_roll * c_yaw * s_pitch
-    R[1, 0] = c_pitch * s_yaw
-    R[1, 1] = c_roll * c_yaw + s_pitch * s_roll * s_yaw
-    R[1, 2] = c_roll * s_pitch * s_yaw - c_yaw * s_roll
-    R[2, 0] = -s_pitch
-    R[2, 1] = c_pitch * s_roll
-    R[2, 2] = c_pitch * c_roll
-    return R
-
-def pose_to_transform(euler, p):
-    T = np.empty((4,4))
-    T[0:3, 0:3] = euler_to_rotmat(euler)
-    T[0:3, 3] = p
-    return T
-
 def rigid_tranformation_3d(params):
     """Returns a rigid transformation matrix
 

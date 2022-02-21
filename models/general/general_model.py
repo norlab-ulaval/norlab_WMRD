@@ -3,6 +3,7 @@ import numpy as np
 
 class Gen_Model():
     def __init__(self):
+        # TODO: Use a URDF file to initialize all frames
         self.number_frames = 0
         self.number_wheels = 0
         self.number_actuated = 0
@@ -36,7 +37,7 @@ class Gen_Model():
     def add_wheel_frame(self, name, parent_name, dof_string, is_actuated, rigid_transform_parent_no_disp):
         wheel_frame = self.Frame()
         wheel_frame.name = name
-        wheel_frame.parent_id = self.name_to_id(parent_name)
+
         wheel_frame.is_actuated = is_actuated
         wheel_frame.rigid_transform_parent_joint_nodisp = rigid_transform_parent_no_disp
 
@@ -50,7 +51,7 @@ class Gen_Model():
     class Frame():
         def __init__(self):
             self.name = ""
-            self.dof_type = -1
+            self.dof_string = "Ry"
             self.parent_id = -1
 
             self.is_wheel = False
@@ -59,10 +60,14 @@ class Gen_Model():
             self.is_fixed = False
 
             self.rigid_transform_parent_joint_nodisp = np.eye(4)
+            self.rigid_transform_parent_joint = np.eye(4)
+            self.rigid_transform_to_world = np.eye(4)
 
             self.scalar_mass = 0
             self.center_of_mass = np.array([0, 0, 0])
             self.moment_of_intertia = np.zeros((3,3))
+
+
 
 
 
