@@ -10,6 +10,7 @@ class Gen_Model():
         self.wheel_radius = 0
 
         self.frames = []
+        self.wheel_constraints = None
 
     def name_to_id(self, name):
         for i in range(0, len(self.frames)):
@@ -38,6 +39,7 @@ class Gen_Model():
         wheel_frame = self.Frame()
         wheel_frame.name = name
 
+        wheel_frame.is_wheel = True
         wheel_frame.is_actuated = is_actuated
         wheel_frame.rigid_transform_parent_joint_nodisp = rigid_transform_parent_no_disp
 
@@ -59,8 +61,11 @@ class Gen_Model():
             self.is_actuated = False
             self.is_fixed = False
 
+            self.euler_rotation = np.zeros(3)
+
             self.rigid_transform_parent_joint_nodisp = np.eye(4)
             self.rigid_transform_parent_joint = np.eye(4)
+            self.rigid_transform_joint_state = np.eye(4)
             self.rigid_transform_to_world = np.eye(4)
 
             self.scalar_mass = 0

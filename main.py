@@ -21,18 +21,42 @@ kin_model = Kin_Model(map_path)
 
 kin_model.add_body_frame(name="Body")
 
+
+transform = np.eye(4)
 euler = np.array([0, 0, 0])
 p = np.array([k1, k2, -k3])
-kin_model.add_joint_frame(name="DL", parent_name="Body", dof_string="RY", is_actuated=False,
-                          rigid_transform_parent_no_disp=euler_to_transform(euler, p))
+euler_pose_to_transform(euler, p, transform)
+kin_model.add_joint_frame(name="DL", parent_name="Body", dof_string="Ry", is_actuated=False,
+                          rigid_transform_parent_no_disp=transform)
 euler = np.array([0, 0, 0])
 p = np.array([k4, k5, -k6])
-kin_model.add_wheel_frame(name="FL", parent_name="DL", dof_string="RY", is_actuated=True,
-                          rigid_transform_parent_no_disp=euler_to_transform(euler, p))
+euler_pose_to_transform(euler, p, transform)
+kin_model.add_wheel_frame(name="FL", parent_name="DL", dof_string="Ry", is_actuated=True,
+                          rigid_transform_parent_no_disp=transform)
 euler = np.array([0, 0, 0])
 p = np.array([-k4, k5, -k6])
-kin_model.add_wheel_frame(name="RL", parent_name="DL", dof_string="RY", is_actuated=True,
-                          rigid_transform_parent_no_disp=euler_to_transform(euler, p))
+euler_pose_to_transform(euler, p, transform)
+kin_model.add_wheel_frame(name="RL", parent_name="DL", dof_string="Ry", is_actuated=True,
+                          rigid_transform_parent_no_disp=transform)
+
+euler = np.array([0, 0, 0])
+p = np.array([k1, -k2, -k3])
+euler_pose_to_transform(euler, p, transform)
+kin_model.add_joint_frame(name="DR", parent_name="Body", dof_string="Ry", is_actuated=False,
+                          rigid_transform_parent_no_disp=transform)
+euler = np.array([0, 0, 0])
+p = np.array([k4, -k5, -k6])
+euler_pose_to_transform(euler, p, transform)
+kin_model.add_wheel_frame(name="FR", parent_name="DL", dof_string="Ry", is_actuated=True,
+                          rigid_transform_parent_no_disp=transform)
+euler = np.array([0, 0, 0])
+p = np.array([-k4, -k5, -k6])
+euler_pose_to_transform(euler, p, transform)
+kin_model.add_wheel_frame(name="RR", parent_name="DL", dof_string="Ry", is_actuated=True,
+                          rigid_transform_parent_no_disp=transform)
+
+kin_model.update_arrays()
+
 
 kin_model.wheel_radius = wheel_radius
 
@@ -47,15 +71,15 @@ test_point = np.array([[0.0, 1.0, 2.0, 3.0],
                         [0.0, 0.0, 0.0, 0.0],
                         [1.0, 1.0, 1.0, 1.0]])
 
-# print(test_point)
-print(kin_model.find_closest_map_points_from_wheels(test_point).ids)
 
 # init_pose = np.array([0, 1.0, 0, 1.0, 0, 0, 0])
 # test_transform = np.eye(4)
 # pose_to_transform(init_pose, test_transform)
 # print(test_transform)
 
-print(kin_model.frames[0].rigid_transform_parent_joint)
-init_pose = np.array([0, 1.0, 0, 1.0, 0, 0, 0])
-kin_model.forward_position_kinematics(init_pose)
-print(kin_model.frames[0].rigid_transform_parent_joint)
+init_state = np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0])
+
+kin_model.forward_position_kinematics(init_state)
+
+kin_model.compute_contact_height()
+print(kin_model.contact_height_errors)

@@ -1,6 +1,6 @@
 import numpy as np
 
-def pose_to_transform(pose, transform):
+def quaternion_pose_to_transform(pose, transform):
     """ A function that modifies a rigid transformation array based on a specified pose
 
     :param pose: pose array consisting of [x, y, z, quat_w, quat_x, quat_y, quat_z]
@@ -51,8 +51,11 @@ def euler_to_rotmat(euler):
     R[2, 2] = c_pitch * c_roll
     return R
 
-def euler_to_transform(euler, p):
-    T = np.empty((4,4))
-    T[0:3, 0:3] = euler_to_rotmat(euler)
-    T[0:3, 3] = p
-    return T
+def euler_to_transform(euler_angles, transform):
+    transform[0:3, 0:3] = euler_to_rotmat(euler_angles)
+    return transform
+
+def euler_pose_to_transform(euler_angles, position, transform):
+    transform[0:3, 0:3] = euler_to_rotmat(euler_angles)
+    transform[0:3, 3] = position
+    return transform
