@@ -47,39 +47,46 @@ kin_model.add_joint_frame(name="DR", parent_name="Body", dof_string="Ry", is_act
 euler = np.array([0, 0, 0])
 p = np.array([k4, -k5, -k6])
 euler_pose_to_transform(euler, p, transform)
-kin_model.add_wheel_frame(name="FR", parent_name="DL", dof_string="Ry", is_actuated=True,
+kin_model.add_wheel_frame(name="FR", parent_name="DR", dof_string="Ry", is_actuated=True,
                           rigid_transform_parent_no_disp=transform)
 euler = np.array([0, 0, 0])
 p = np.array([-k4, -k5, -k6])
 euler_pose_to_transform(euler, p, transform)
-kin_model.add_wheel_frame(name="RR", parent_name="DL", dof_string="Ry", is_actuated=True,
+kin_model.add_wheel_frame(name="RR", parent_name="DR", dof_string="Ry", is_actuated=True,
                           rigid_transform_parent_no_disp=transform)
 
 kin_model.update_arrays()
 
-
-kin_model.wheel_radius = wheel_radius
-
-# tests general model
-print(kin_model.frames[2].name)
-print(kin_model.frames[2].rigid_transform_parent_joint_nodisp)
-
-# tests map
-# print(kin_model.map.features)
-test_point = np.array([[0.0, 1.0, 2.0, 3.0],
-                        [0.0, 1.0, 2.0, 3.0],
-                        [0.0, 0.0, 0.0, 0.0],
-                        [1.0, 1.0, 1.0, 1.0]])
-
-
-# init_pose = np.array([0, 1.0, 0, 1.0, 0, 0, 0])
-# test_transform = np.eye(4)
-# pose_to_transform(init_pose, test_transform)
-# print(test_transform)
+kin_model.define_kinematic_chains()
 
 init_state = np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0])
 
 kin_model.forward_position_kinematics(init_state)
 
-kin_model.compute_contact_height()
-print(kin_model.contact_height_errors)
+kin_model.compute_contact_frames()
+
+# for i in range(0, kin_model.number_frames):
+#     print(kin_model.frames[i].kinematic_chain_to_body)
+#
+# kin_model.wheel_radius = wheel_radius
+#
+# # tests general model
+# print(kin_model.frames[2].name)
+# print(kin_model.frames[2].rigid_transform_parent_joint_nodisp)
+#
+# # tests map
+# # print(kin_model.map.features)
+# test_point = np.array([[0.0, 1.0, 2.0, 3.0],
+#                         [0.0, 1.0, 2.0, 3.0],
+#                         [0.0, 0.0, 0.0, 0.0],
+#                         [1.0, 1.0, 1.0, 1.0]])
+#
+#
+# # init_pose = np.array([0, 1.0, 0, 1.0, 0, 0, 0])
+# # test_transform = np.eye(4)
+# # pose_to_transform(init_pose, test_transform)
+# # print(test_transform)
+#
+#
+# kin_model.compute_contact_height()
+# print(kin_model.contact_height_errors)

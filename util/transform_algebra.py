@@ -59,3 +59,9 @@ def euler_pose_to_transform(euler_angles, position, transform):
     transform[0:3, 0:3] = euler_to_rotmat(euler_angles)
     transform[0:3, 3] = position
     return transform
+
+
+def cross_product_skew_symmetric_from_vector(vector):
+    return np.array([[0, -vector[2], vector[1]],
+                     [vector[0], 0, -vector[0]],
+                     [-vector[1], vector[0], 0]])
