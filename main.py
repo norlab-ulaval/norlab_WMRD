@@ -55,6 +55,10 @@ euler_pose_to_transform(euler, p, transform)
 kin_model.add_wheel_frame(name="RR", parent_name="DR", dof_string="Ry", is_actuated=True,
                           rigid_transform_parent_no_disp=transform)
 
+kin_model.holonomic_joint_constraints = np.arrray([0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0])
+
+kin_model.wheel_radius = 0.5
+
 kin_model.update_arrays()
 
 kin_model.define_kinematic_chains()
@@ -63,7 +67,7 @@ init_state = np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.
 
 kin_model.forward_position_kinematics(init_state)
 
-kin_model.compute_contact_frames()
+kin_model.compute_wheel_jacobians()
 
 # for i in range(0, kin_model.number_frames):
 #     print(kin_model.frames[i].kinematic_chain_to_body)

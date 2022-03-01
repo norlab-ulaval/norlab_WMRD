@@ -10,7 +10,7 @@ class Gen_Model():
         self.wheel_radius = 0
 
         self.frames = []
-        self.wheel_constraints = None
+        self.holonomic_joint_constraints = None
 
     def name_to_id(self, name):
         for i in range(0, len(self.frames)):
@@ -44,8 +44,8 @@ class Gen_Model():
         wheel_frame.is_actuated = is_actuated
         wheel_frame.rigid_transform_parent_joint_nodisp = rigid_transform_parent_no_disp
 
+        wheel_frame.rigid_transform_contact_to_world = np.eye(4)
         wheel_frame.rigid_transform_contact_to_wheel = np.eye(4)
-        wheel_frame.contact_point_to_world_vector = np.zeros((3, 1))
         wheel_frame.contact_angle = 0
 
         self.frames.append(wheel_frame)

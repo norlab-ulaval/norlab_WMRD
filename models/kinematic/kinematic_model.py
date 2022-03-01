@@ -25,15 +25,15 @@ class Kin_Model(Gen_Model):
 
         for i in range(0, self.number_frames):
             if self.frames[i].is_wheel:
-                self.frames[i].wheel_jacobian = np.zeros((3, self.number_frames))
+                self.frames[i].wheel_jacobian = np.zeros((3, 5 + self.number_frames))
+        self.full_wheel_jacobians = np.zeros((3*self.number_wheels, 5+self.number_frames))
+
 
     def forward_position_kinematics(self, state):
         """ Algorithm 1 in Seegmiller thesis
         :param state: state array [pose, config]:
         :return:
         """
-        print(state)
-        print(self.frames[-1].rigid_transform_to_world)
         pose = state[:7]
         config = state[7:]
         quaternion_pose_to_transform(pose, self.frames[0].rigid_transform_parent_joint)
@@ -69,29 +69,34 @@ class Kin_Model(Gen_Model):
         wheel_count = 0
         for i in range(0, self.number_frames):
             if self.frames[i].is_wheel:
-                self.frames[i].contact_point_to_world_vector[:, 0] = self.map.features[:3, closest_map_points.ids[0, wheel_count]]
-                self.frames[i].rigid_transform_contact_to_wheel[:3, 3] = self.frames[i].contact_point_to_world_vector[:, 0] - \
+                self.frames[i].rigid_transform_contact_to_world[:3, 3] = self.map.features[:3, closest_map_points.ids[0, wheel_count]]
+                self.frames[i].rigid_transform_contact_to_wheel[:3, 3] = self.frames[i].rigid_transform_contact_to_world[:3, 3] - \
                                                                          self.frames[i].rigid_transform_to_world[:3, 3]
-                contact_point_normal = self.map.getDescriptorViewByName("normals")[:, closest_map_points.ids[0, wheel_count]]
-                self.frames[i].contact_angle = np.arccos(np.dot(self.frames[i].rigid_transform_contact_to_wheel[:3, 3],
-                                                                contact_point_normal))
-                print(self.frames[i].contact_angle)
-                # TODO: Compute rotation contact to wheel properly using surface normals
+                self.frames[i].rigid_transform_contact_to_wheel[1, 3] = 0
+                contact_point_normal_world = self.map.getDescriptorViewByName("normals")[:, closest_map_points.ids[0, wheel_count]]
+                contact_point_normal_world_xz = contact_point_normal_world
+                contact_point_normal_world_xz[1] = 0
+                contact_point_normal_world_xz = contact_point_normal_world_xz / np.linalg.norm(contact_point_normal_world_xz)
+
+                self.frames[i].rigid_transform_contact_to_world[:3, 2] = contact_point_normal_world_xz
+                self.frames[i].rigid_transform_contact_to_world[:3, 1] = self.frames[i].rigid_transform_to_world[:3, 1]
+                self.frames[i].rigid_transform_contact_to_world[:3, 0] = np.cross(self.frames[i].rigid_transform_to_world[:3, 1],
+                                                                                  contact_point_normal_world_xz)
+
+                self.frames[i].rigid_transform_contact_to_wheel = self.frames[i].rigid_transform_contact_to_world @ \
+                                                                  np.linalg.inv(self.frames[i].rigid_transform_to_world)
+                self.frames[i].contact_point_angle = np.arctan2(self.frames[i].rigid_transform_contact_to_wheel[0,2],
+                                                                self.frames[i].rigid_transform_contact_to_wheel[0,0])
+
+                self.contact_height_errors[wheel_count] = np.linalg.norm(self.frames[i].rigid_transform_contact_to_wheel[:3, 3]) - \
+                                                                    self.wheel_radius
 
                 wheel_count += 1
 
-    def compute_contact_height(self):
-        self.find_wheel_poses()
-        closest_map_points = self.find_closest_map_points_from_wheels()
-
-        for i in range(0, self.number_wheels):
-            self.contact_height_errors[i] = comp_disp(self.map.features[:3, closest_map_points.ids[0, i]],
-                                                      self.wheel_poses[:3, i]) - self.wheel_radius
-
-
     def compute_wheel_jacobians(self):
-        # TODO: Complete wheel jacobians
+        # TODO: Validate computation
         self.compute_contact_frames()
+        wheel_count = 0
         for i in range(1, self.number_frames):
             if self.frames[i].is_wheel == True:
                 for next_parent_id in self.frames[i].kinematic_chain_to_body:
@@ -101,12 +106,19 @@ class Kin_Model(Gen_Model):
                         frame_to_world_rotation_vector = self.frames[next_parent_id].rigid_transform_to_world[:3, 1]
 
                         self.frames[i].wheel_jacobian[:, next_parent_id+5] = np.cross(frame_to_world_rotation_vector,
-                                                                       (self.frames[i].contact_point_to_world_vector, frame_to_world_vector))
+                                                                       (self.frames[i].rigid_transform_contact_to_world[:3, 3] - frame_to_world_vector))
 
-                contact_to_world_body_to_world_diff_vector = self.frames[i].contact_point_to_world_vector - \
+                contact_to_world_body_to_world_diff_vector = self.frames[i].rigid_transform_contact_to_world[:3, 3] - \
                                                              self.frames[0].rigid_transform_to_world[:3, 3]
 
-                self.frames[i].wheel_jacobian[:, :3] = contact_to_world_body_to_world_diff_vector(contact_to_world_body_to_world_diff_vector) @ \
+                self.frames[i].wheel_jacobian[:, :3] = cross_product_skew_symmetric_from_vector(contact_to_world_body_to_world_diff_vector) @ \
                                                        self.frames[0].rigid_transform_to_world[:3, :3]
+                self.frames[i].wheel_jacobian[:, 4:7] = self.frames[0].rigid_transform_to_world[:3, :3]
+                self.frames[i].wheel_jacobian = self.frames[i].rigid_transform_contact_to_world[:3, :3].transpose() @ self.frames[i].wheel_jacobian
 
-                self.frames[i].wheel_jacobian[:, 4:6] = self.frames[1].rigid_transform_to_world[:3, :3]
+                self.full_wheel_jacobians[wheel_count:wheel_count+3, :] = self.frames[i].wheel_jacobian
+                wheel_count += 1
+
+    def init_terrain_contact(self, init_state):
+        #TODO: Implement Newton minimization (first step is to define gradient and Hessian)
+        self.compute_wheel_jacobians()
