@@ -15,6 +15,8 @@ class Kin_Model(Gen_Model):
         self.map = self.PM.DataPoints.load(map_path)
         self.matcher.init(self.map)
 
+        self.optimization_step = 0.1
+
     def update_arrays(self):
         self.wheel_poses = np.zeros((4, self.number_wheels))
         self.contact_height_errors = np.zeros(self.number_wheels)
@@ -28,6 +30,18 @@ class Kin_Model(Gen_Model):
                 self.frames[i].wheel_jacobian = np.zeros((3, 5 + self.number_frames))
         self.full_wheel_jacobians = np.zeros((3*self.number_wheels, 5+self.number_frames))
 
+        self.omega_matrix = np.eye(3)
+        self.block_diagonal_transform = np.eye(6 + self.number_frames - 1)
+
+        self.hessian_matrix = np.zeros((5+self.number_frames, 5+self.number_frames))
+        self.hessian_mask = np.zeros((5+self.number_frames, 5+self.number_frames))
+        self.hessian_mask[2::3] = 1
+        self.gradient_matrix = np.zeros((5+self.number_frames, 5+self.number_frames))
+
+    def compute_spatial_velocity_conversion(self, state):
+        euler_pose_to_omega_submatrix(quaternion_to_euler(state[3:]), self.omega_matrix)
+        self.block_diagonal_transform[:3, :3] = self.omega_matrix
+        self.block_diagonal_transform[3:6, 3:6] = self.frames[0].rigid_transform_to_world[:3, :3]
 
     def forward_position_kinematics(self, state):
         """ Algorithm 1 in Seegmiller thesis
@@ -47,8 +61,7 @@ class Kin_Model(Gen_Model):
                                                                   self.frames[i].rigid_transform_parent_joint_nodisp
                     self.frames[i].rigid_transform_to_world = self.frames[i].rigid_transform_parent_joint @ \
                                                               self.frames[i-1].rigid_transform_to_world
-
-        print(self.frames[-1].rigid_transform_to_world)
+        self.compute_spatial_velocity_conversion(state)
         return 1
 
     def find_wheel_poses(self):
@@ -116,9 +129,19 @@ class Kin_Model(Gen_Model):
                 self.frames[i].wheel_jacobian[:, 4:7] = self.frames[0].rigid_transform_to_world[:3, :3]
                 self.frames[i].wheel_jacobian = self.frames[i].rigid_transform_contact_to_world[:3, :3].transpose() @ self.frames[i].wheel_jacobian
 
-                self.full_wheel_jacobians[wheel_count:wheel_count+3, :] = self.frames[i].wheel_jacobian
+                self.full_wheel_jacobians[wheel_count*3:wheel_count*3+3, :] = self.frames[i].wheel_jacobian
                 wheel_count += 1
 
-    def init_terrain_contact(self, init_state):
+    def init_terrain_contact(self, state):
         #TODO: Implement Newton minimization (first step is to define gradient and Hessian)
+        self.forward_position_kinematics(state)
         self.compute_wheel_jacobians()
+        #TODO: validate how to construct the hessian matrix from equations 2.29 to 2.32
+        # self.hessian_matrix = self.hessian_mask * self.full_wheel_jacobians
+
+        # self.gradient_matrix = self.hessian_matrix @ self.block_diagonal_transform.transpose()
+        #
+        # new_state = state - self.optimization_step * np.linalg.inv(self.hessian_matrix) @ self.gradient_matrix
+
+        print(state)
+        print(new_state)

@@ -65,3 +65,23 @@ def cross_product_skew_symmetric_from_vector(vector):
     return np.array([[0, -vector[2], vector[1]],
                      [vector[0], 0, -vector[0]],
                      [-vector[1], vector[0], 0]])
+
+def euler_pose_to_omega_submatrix(euler_angles, transform):
+    """ Equation defined in equation A.14, A.15 (Appendix A) of Seegmiller thesis. Allows to convert from angular velocity to Euler rate angles
+
+    :param euler_angles: Set of euler angles [roll, pitch, yaw]
+    :param transform: 3x3 identity matrix in which to enter the values
+    :return:
+    """
+    s_roll = np.sin(euler_angles[0])
+    c_roll = np.cos(euler_angles[0])
+    s_pitch = np.sin(euler_angles[1])
+    c_pitch = np.cos(euler_angles[1])
+    t_pitch = np.tan(euler_angles[1])
+
+    transform[0,1] = s_roll * t_pitch
+    transform[0,2] = c_roll * t_pitch
+    transform[1,1] = c_roll
+    transform[1,2] = -s_roll
+    transform[2,1] = s_roll / c_pitch
+    transform[2,2] = c_roll / c_pitch

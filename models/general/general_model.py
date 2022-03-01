@@ -11,6 +11,7 @@ class Gen_Model():
 
         self.frames = []
         self.holonomic_joint_constraints = None
+        self.free_states = None
 
     def name_to_id(self, name):
         for i in range(0, len(self.frames)):

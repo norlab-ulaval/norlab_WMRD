@@ -26,7 +26,11 @@ def forward_diff(f_over, f, d):
     return np.divide(f_over - f, d)
     
     
-def quaternion_to_euler(w, x, y, z):
+def quaternion_to_euler(quaternion):
+    w = quaternion[0]
+    x = quaternion[1]
+    y = quaternion[2]
+    z = quaternion[3]
     sinr_cosp = 2 * (w * x + y * z)
     cosr_cosp = 1 - 2 * (x**2 + y**2)
     roll = np.arctan2(sinr_cosp, cosr_cosp)
