@@ -126,7 +126,7 @@ class Kin_Model(Gen_Model):
 
                 self.frames[i].wheel_jacobian[:, :3] = cross_product_skew_symmetric_from_vector(contact_to_world_body_to_world_diff_vector) @ \
                                                        self.frames[0].rigid_transform_to_world[:3, :3]
-                self.frames[i].wheel_jacobian[:, 4:7] = self.frames[0].rigid_transform_to_world[:3, :3]
+                self.frames[i].wheel_jacobian[:, 3:6] = self.frames[0].rigid_transform_to_world[:3, :3]
                 self.frames[i].wheel_jacobian = self.frames[i].rigid_transform_contact_to_world[:3, :3].transpose() @ self.frames[i].wheel_jacobian
 
                 self.full_wheel_jacobians[wheel_count*3:wheel_count*3+3, :] = self.frames[i].wheel_jacobian
@@ -143,5 +143,5 @@ class Kin_Model(Gen_Model):
         #
         # new_state = state - self.optimization_step * np.linalg.inv(self.hessian_matrix) @ self.gradient_matrix
 
-        print(state)
-        print(new_state)
+        # print(state)
+        # print(new_state)
