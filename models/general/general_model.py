@@ -59,9 +59,11 @@ class Gen_Model():
         for i in range(0, self.number_frames):
             self.frames[i].kinematic_chain_to_body.append(i)
             next_parent_id = self.frames[i].parent_id
-            while next_parent_id != -1:
+            while next_parent_id != 0:
                 self.frames[i].kinematic_chain_to_body.append(next_parent_id)
                 next_parent_id = self.frames[next_parent_id].parent_id
+
+        print(self.frames[2].kinematic_chain_to_body)
 
     # inner frame class
     class Frame():

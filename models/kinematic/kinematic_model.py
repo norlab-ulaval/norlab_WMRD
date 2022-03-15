@@ -50,17 +50,17 @@ class Kin_Model(Gen_Model):
         """
         pose = state[:7]
         config = state[7:]
-        quaternion_pose_to_transform(pose, self.frames[0].rigid_transform_parent_joint)
+        quaternion_pose_to_transform(pose, self.frames[0].rigid_transform_to_world)
         for i in range(1, self.number_frames):
-            if self.frames[i].is_actuated:
                 # TODO: Code all possibilities for all joint types
-                if self.frames[i].dof_string == "Ry":
-                    self.frames[i].euler_rotation[1] = config[i-1]
-                    euler_to_transform(self.frames[i].euler_rotation, self.frames[i].rigid_transform_joint_state)
-                    self.frames[i].rigid_transform_parent_joint = self.frames[i].rigid_transform_joint_state @ \
-                                                                  self.frames[i].rigid_transform_parent_joint_nodisp
-                    self.frames[i].rigid_transform_to_world = self.frames[i].rigid_transform_parent_joint @ \
-                                                              self.frames[i-1].rigid_transform_to_world
+            if self.frames[i].dof_string == "Ry":
+                parent_id = self.frames[i].parent_id
+                self.frames[i].euler_rotation[1] = config[i-1]
+                euler_to_transform(self.frames[i].euler_rotation, self.frames[i].rigid_transform_joint_state)
+                self.frames[i].rigid_transform_parent_joint = self.frames[i].rigid_transform_joint_state @ \
+                                                              self.frames[i].rigid_transform_parent_joint_nodisp
+                self.frames[i].rigid_transform_to_world = self.frames[i].rigid_transform_parent_joint @ \
+                                                          self.frames[parent_id].rigid_transform_to_world
         self.compute_spatial_velocity_conversion(state)
         return 1
 
@@ -107,7 +107,7 @@ class Kin_Model(Gen_Model):
                 wheel_count += 1
 
     def compute_wheel_jacobians(self):
-        # TODO: Validate computation
+        # TODO: Validate computation, re-check result from line 12 of algo 2
         self.compute_contact_frames()
         wheel_count = 0
         for i in range(1, self.number_frames):
@@ -118,8 +118,10 @@ class Kin_Model(Gen_Model):
                         frame_to_world_vector = self.frames[next_parent_id].rigid_transform_to_world[:3, 3]
                         frame_to_world_rotation_vector = self.frames[next_parent_id].rigid_transform_to_world[:3, 1]
 
+
                         self.frames[i].wheel_jacobian[:, next_parent_id+5] = np.cross(frame_to_world_rotation_vector,
                                                                        (self.frames[i].rigid_transform_contact_to_world[:3, 3] - frame_to_world_vector))
+                        # print(self.frames[next_parent_id].rigid_transform_to_world)
 
                 contact_to_world_body_to_world_diff_vector = self.frames[i].rigid_transform_contact_to_world[:3, 3] - \
                                                              self.frames[0].rigid_transform_to_world[:3, 3]
