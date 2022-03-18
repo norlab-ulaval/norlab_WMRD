@@ -121,7 +121,8 @@ class Kin_Model(Gen_Model):
 
                         self.frames[i].wheel_jacobian[:, next_parent_id+5] = np.cross(frame_to_world_rotation_vector,
                                                                        (self.frames[i].rigid_transform_contact_to_world[:3, 3] - frame_to_world_vector))
-                        # print(self.frames[next_parent_id].rigid_transform_to_world)
+                        print(next_parent_id)
+                        print(self.frames[i].rigid_transform_contact_to_world[:3, 3] - frame_to_world_vector)
 
                 contact_to_world_body_to_world_diff_vector = self.frames[i].rigid_transform_contact_to_world[:3, 3] - \
                                                              self.frames[0].rigid_transform_to_world[:3, 3]
