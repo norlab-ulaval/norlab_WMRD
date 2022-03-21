@@ -63,7 +63,7 @@ def euler_pose_to_transform(euler_angles, position, transform):
 
 def cross_product_skew_symmetric_from_vector(vector):
     return np.array([[0, -vector[2], vector[1]],
-                     [vector[0], 0, -vector[0]],
+                     [vector[2], 0, -vector[0]],
                      [-vector[1], vector[0], 0]])
 
 def euler_pose_to_omega_submatrix(euler_angles, transform):

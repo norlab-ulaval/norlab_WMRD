@@ -63,8 +63,6 @@ class Gen_Model():
                 self.frames[i].kinematic_chain_to_body.append(next_parent_id)
                 next_parent_id = self.frames[next_parent_id].parent_id
 
-        print(self.frames[2].kinematic_chain_to_body)
-
     # inner frame class
     class Frame():
         def __init__(self):

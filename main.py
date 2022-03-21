@@ -15,7 +15,7 @@ k6 = 0.012977
 
 wheel_radius = 0.3
 
-map_path = 'data/maps/flat_surface.vtk'
+map_path = 'data/maps/flat_surface_100000.vtk'
 
 kin_model = Kin_Model(map_path)
 
