@@ -20,6 +20,11 @@ class Kin_Model(Gen_Model):
     def update_arrays(self):
         self.wheel_poses = np.zeros((4, self.number_wheels))
         self.contact_height_errors = np.zeros(self.number_wheels)
+        self.contact_cost = 0
+        self.contact_velocity_derivative = np.zeros((1+self.number_wheels, 5+self.number_frames))
+        self.contact_velocity_derivative[self.number_wheels, 6:] = self.holonomic_joint_constraints
+        self.contact_state_derivative = np.zeros((1+self.number_wheels, 5+self.number_frames))
+        self.contact_free_state_derivative = np.zeros((1+self.number_wheels, 1+self.number_wheels))
 
         init_query = np.zeros((4, self.number_wheels))
         init_query[3, :] = 1.0
@@ -108,7 +113,7 @@ class Kin_Model(Gen_Model):
 
     def compute_wheel_jacobians(self):
         # TODO: Validate computation, re-check result from line 12 of algo 2
-        self.compute_contact_frames()
+        # self.compute_contact_frames()
         wheel_count = 0
         for i in range(1, self.number_frames):
             if self.frames[i].is_wheel == True:
@@ -122,29 +127,41 @@ class Kin_Model(Gen_Model):
                         self.frames[i].wheel_jacobian[:, next_parent_id+5] = np.cross(frame_to_world_rotation_vector,
                                                                        (self.frames[i].rigid_transform_contact_to_world[:3, 3] - frame_to_world_vector))
 
-
                 contact_to_world_body_to_world_diff_vector = self.frames[i].rigid_transform_contact_to_world[:3, 3] - \
                                                              self.frames[0].rigid_transform_to_world[:3, 3]
 
-                self.frames[i].wheel_jacobian[:, :3] = cross_product_skew_symmetric_from_vector(contact_to_world_body_to_world_diff_vector).T @ \
+                self.frames[i].wheel_jacobian[:, :3] = cross_product_skew_symmetric_from_vector(
+                    contact_to_world_body_to_world_diff_vector).T @ \
                                                        self.frames[0].rigid_transform_to_world[:3, :3]
-                print(self.frames[i].wheel_jacobian[:, :3])
                 self.frames[i].wheel_jacobian[:, 3:6] = self.frames[0].rigid_transform_to_world[:3, :3]
-                self.frames[i].wheel_jacobian = self.frames[i].rigid_transform_contact_to_world[:3, :3].T @ self.frames[i].wheel_jacobian
+                self.frames[i].wheel_jacobian = self.frames[i].rigid_transform_contact_to_world[:3, :3].T @ self.frames[
+                    i].wheel_jacobian
 
                 self.full_wheel_jacobians[wheel_count*3:wheel_count*3+3, :] = self.frames[i].wheel_jacobian
                 wheel_count += 1
 
+    def compute_terrain_cost(self):
+        self.contact_cost = self.contact_height_errors.T @ self.contact_height_errors
+
+    def compute_terrain_gradient(self):
+        self.contact_velocity_derivative[:4, :] = self.full_wheel_jacobians[2::3, :]
+        self.contact_state_derivative = self.contact_velocity_derivative @ self.block_diagonal_transform.T
+        self.contact_free_state_derivative = self.contact_state_derivative[:, np.where(self.free_states)]
+        # TODO: finish gradient computation
+
     def init_terrain_contact(self, state):
         #TODO: Implement Newton minimization (first step is to define gradient and Hessian)
         self.forward_position_kinematics(state)
+        self.compute_spatial_velocity_conversion(state)
+        self.compute_contact_frames()
         self.compute_wheel_jacobians()
-        #TODO: validate how to construct the hessian matrix from equations 2.29 to 2.32
-        # self.hessian_matrix = self.hessian_mask * self.full_wheel_jacobians
-
-        # self.gradient_matrix = self.hessian_matrix @ self.block_diagonal_transform.transpose()
-        #
-        # new_state = state - self.optimization_step * np.linalg.inv(self.hessian_matrix) @ self.gradient_matrix
-
-        # print(state)
-        # print(new_state)
+        self.compute_terrain_cost()
+        self.compute_terrain_gradient()
+        print("A = ")
+        print(self.full_wheel_jacobians)
+        print("derrdot_dqvel = ")
+        print(self.contact_velocity_derivative)
+        print("derr_dstate = ")
+        print(self.contact_state_derivative)
+        print("derr_dx = ")
+        print(self.contact_free_state_derivative)

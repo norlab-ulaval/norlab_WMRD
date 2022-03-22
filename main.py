@@ -64,8 +64,8 @@ euler_pose_to_transform(euler_rr, p_rr, transform_rr)
 kin_model.add_wheel_frame(name="RR", parent_name="DR", dof_string="Ry", is_actuated=True,
                           rigid_transform_parent_no_disp=transform_rr)
 
-kin_model.holonomic_joint_constraints = np.array([0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0])
-kin_model.free_states = np.array([0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0])
+kin_model.holonomic_joint_constraints = np.array([1, 0, 0, 1, 0, 0])
+kin_model.free_states = np.array([1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0])
 
 kin_model.wheel_radius = 0.3
 
@@ -82,31 +82,3 @@ init_state = np.array([0.0, 0.0, wheel_radius+k6+k3, 1.0, 0.0, 0.0, 0.0, 0.0, 0.
 
 kin_model.init_terrain_contact(init_state)
 
-print(kin_model.full_wheel_jacobians)
-
-
-# for i in range(0, kin_model.number_frames):
-#     print(kin_model.frames[i].kinematic_chain_to_body)
-#
-# kin_model.wheel_radius = wheel_radius
-#
-# # tests general model
-# print(kin_model.frames[2].name)
-# print(kin_model.frames[2].rigid_transform_parent_joint_nodisp)
-#
-# # tests map
-# # print(kin_model.map.features)
-# test_point = np.array([[0.0, 1.0, 2.0, 3.0],
-#                         [0.0, 1.0, 2.0, 3.0],
-#                         [0.0, 0.0, 0.0, 0.0],
-#                         [1.0, 1.0, 1.0, 1.0]])
-#
-#
-# # init_pose = np.array([0, 1.0, 0, 1.0, 0, 0, 0])
-# # test_transform = np.eye(4)
-# # pose_to_transform(init_pose, test_transform)
-# # print(test_transform)
-#
-#
-# kin_model.compute_contact_height()
-# print(kin_model.contact_height_errors)
