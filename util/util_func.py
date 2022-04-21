@@ -58,10 +58,10 @@ def comp_disp(x_fut, x_pres):
     x_disp = x_fut - x_pres
     return np.linalg.norm(x_disp)
 
-def disp_err(x_pred, x):
+def disp_err(x_pred, x, prediction_weights):
     x_err = x_pred - x
     x[2] = wrap2pi(x[2])
-    return x_err @ x_err
+    return x_err @ prediction_weights @ x_err
     
 def up_propa_mat(mat, ang):
     propa_cos = np.cos(ang)

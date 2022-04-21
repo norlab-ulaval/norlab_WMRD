@@ -4,6 +4,7 @@ from util.transform_algebra import *
 
 from models.general.general_model import Gen_Model
 from models.kinematic.kinematic_model import Kin_Model
+import wmrde
 
 ## Warthog dimensions
 k1 = 0
@@ -82,3 +83,12 @@ init_state = np.array([0.0, 0.0, wheel_radius+k6+k3, 1.0, 0.0, 0.0, 0.0, 0.0, 0.
 
 kin_model.init_terrain_contact(init_state)
 
+y = np.zeros(69)
+y[0:12] = np.array([5.29667e-18, -0.0221193, 0, 0, 0, 1.03635, 0.000373859, 0, 0, 0.000373859, 0, 0])
+ydot = np.zeros(69)
+u = np.full(4, 10)
+
+## Predictor interface class test
+# predictor = wmrde.Predictor()
+# print(predictor)
+# print(predictor.predict(y, u, ydot, 0.05))

@@ -51,6 +51,15 @@ def euler_to_rotmat(euler):
     R[2, 2] = c_pitch * c_roll
     return R
 
+def yaw_to_rotmat2d(R, yaw):
+    s_yaw = np.sin(yaw)
+    c_yaw = np.cos(yaw)
+    R[0,0] = c_yaw
+    R[0, 1] = -s_yaw
+    R[1,0] = s_yaw
+    R[1,1] = c_yaw
+    return True
+
 def euler_to_transform(euler_angles, transform):
     transform[0:3, 0:3] = euler_to_rotmat(euler_angles)
     return transform
