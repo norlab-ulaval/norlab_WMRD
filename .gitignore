@@ -4,4 +4,6 @@ data/
 
 .idea/
 __pycache__/
+.ipynb_checkpoints
 
+JL/doughnut_autorally/data/
