@@ -1,5 +1,8 @@
 import numpy as np
 import pandas as pd
+from ast import literal_eval
+import matplotlib.pyplot as plt
+
 
 # Vehicles measurements
 
@@ -28,28 +31,30 @@ def get_wheels_speed_from_twist_speeds(twist_speeds):
 #get_wheels_speed_from_twist_speeds(test)
 
 
-
-
-
-
 def import_joint_states(path):
-    odom = pd.read_csv(path, skiprows=[1], dtype="string")
-    return odom
+    df = pd.read_csv(path, dtype="string", delimiter=",")
+    return df
+
+def convert_list_of_strings_to_array_of_floats(list_of_strings):
+    list_of_floats = []
+    for string in list_of_strings:
+        list_of_floats.append(literal_eval(string))
+    return np.array(list_of_floats)
+
+def divide_by_wheel(positions):
+    front_left = positions[:,0]
+    front_right = positions[:,1]
+    rear_left = positions[:,2]
+    rear_right = positions[:,3]
+    return front_left, front_right, rear_left, rear_right
 
 
-def remove_brackets_from_string_array(string_array):
-    new_string_array = []
-    for string in string_array:
-        allo = string.replace("[", "").replace("]", "").replace("'", "")
-        new_string_array.append(allo.split(","))
-    return new_string_array
+list_of_strings = import_joint_states("_slash_joint_states.csv").values[:,8]
+positions = convert_list_of_strings_to_array_of_floats(list_of_strings)
+front_left, front_right, rear_left, rear_right = divide_by_wheel(positions)
 
-odom = import_joint_states("_slash_joint_states.csv")
-string_array_without_brackets = remove_brackets_from_string_array(odom.values[:,8])
-print(string_array_without_brackets[0])
-
-
-
-
-
-
+plt.plot(front_left)
+plt.plot(front_right)
+plt.plot(rear_left)
+plt.plot(rear_right)
+plt.show()
