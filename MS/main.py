@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 # Vehicles measurements
 
 b_body_width_in_meters = 1
-r_wheels_radius_in_meters = 1
+r_wheels_radius_in_meters = 0.10
+frequency = 10
 
 # Some maths and definitions
 
@@ -48,13 +49,33 @@ def divide_by_wheel(positions):
     rear_right = positions[:,3]
     return front_left, front_right, rear_left, rear_right
 
+def compute_speed(wheel_ticks, dt):
+    wheel_speed = np.diff(wheel_ticks) / dt
+    return wheel_speed
+
+def convoluate_speed_npoints(speed, npoints):
+    speed_conv = np.convolve(speed, np.ones((npoints,))/npoints, mode='same')
+    return speed_conv
+
+def rad_per_sec_to_m_per_sec(speed, radius):
+    return speed * radius
 
 list_of_strings = import_joint_states("_slash_joint_states.csv").values[:,8]
 positions = convert_list_of_strings_to_array_of_floats(list_of_strings)
 front_left, front_right, rear_left, rear_right = divide_by_wheel(positions)
 
-plt.plot(front_left)
-plt.plot(front_right)
-plt.plot(rear_left)
-plt.plot(rear_right)
+speed = compute_speed(front_left, 1/frequency)
+speed = convoluate_speed_npoints(speed, 10)
+speed_in_m_per_sec = rad_per_sec_to_m_per_sec(speed, r_wheels_radius_in_meters)
+
+plt.figure(1)
+plt.plot(speed_in_m_per_sec)
+plt.title("Speed read from Joint States")
+plt.xlabel("Timestamp")
+plt.ylabel("Speed in m/s")
+
+plt.figure(2)
+plt.plot(speed)
+plt.title("Speed read from Joint States")
+plt.xlabel("Timestamp")
 plt.show()
