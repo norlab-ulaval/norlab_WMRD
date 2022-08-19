@@ -62,7 +62,7 @@ def compute_prediction_error(init_params, model, dataloader, timesteps_per_horiz
     model.adjust_motion_params(init_params)
     print('alpha : ', init_params[0],  ' y_icr : ', init_params[1])
     prediction_error = 0
-    for i, (inputs, targets) in enumerate(dataloader):
+    for i, (inputs, targets, step) in enumerate(dataloader):
         # print(inputs)
         # print(targets)
         predicted_state = inputs[0, :6].numpy()

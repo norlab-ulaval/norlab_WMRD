@@ -78,6 +78,7 @@ class ICR_symmetrical:
         self.body_vel_world_2d[2] = body_vel[2]
         self.body_vel_world_3d[:2] = self.body_vel_world_2d[:2]
         self.body_vel_world_3d[-1] = self.body_vel_world_2d[-1]
+
         return init_state + self.body_vel_world_3d * self.dt
 
     def adjust_motion_params(self, params):
