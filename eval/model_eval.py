@@ -77,10 +77,15 @@ def compute_evaluation(model, unicycle_model, eval_dataset, body_cmd_dataset, bo
             predicted_state_body_encoder = unicycle_model.predict(predicted_state_body_encoder, body_encoder_input[input_id:input_id + 2])
 
         prediction_errors_array[i, :] = target - predicted_state_model
+        prediction_errors_array[i, 5] = wrap2pi(prediction_errors_array[i, 5])
         body_cmd_disp_array[i, :] = predicted_state_body_cmd - init_state
+        body_cmd_disp_array[i, 5] = wrap2pi(body_cmd_disp_array[i, 5])
         body_encoder_disp_array[i, :] = predicted_state_body_encoder - init_state
+        body_encoder_disp_array[i, 5] = wrap2pi(body_encoder_disp_array[i, 5])
         icp_disp_array[i, :] = target - init_state
+        icp_disp_array[i, 5] = wrap2pi(icp_disp_array[i, 5])
         model_disp_array[i, :] = predicted_state_model - init_state
+        model_disp_array[i, 5] = wrap2pi(model_disp_array[i, 5])
 
         # TODO: Figure out wrap2pi for angular displacement (need to iterate on it) / transform all displacements in body frame...
 
@@ -91,9 +96,10 @@ prediction_errors_array, model_disp_array, body_cmd_disp_array, \
 body_encoder_disp_array, icp_disp_array = compute_evaluation(icr_symmetrical, unicycle, wmr_eval_dataset,
                           wmr_body_cmd_dataset, wmr_body_encoder_dataset, timesteps_per_horizon, prediction_weights)
 
-# plt.plot(body_cmd_disp_array[:, 0], label='unicycle')
-# plt.plot(body_encoder_disp_array[:, 0], label='encoder_DD')
-# plt.plot(model_disp_array[:, 0], label='model')
-# plt.plot(icp_disp_array[:, 0], label = 'icp')
+plt.plot(body_cmd_disp_array[:, 5], label='unicycle')
+plt.plot(body_encoder_disp_array[:, 5], label='encoder_DD')
+plt.plot(model_disp_array[:, 5], label='model')
+plt.plot(icp_disp_array[:, 5], label = 'icp')
+# plt.plot(prediction_errors_array[:, 5])
 plt.legend()
 plt.show()
