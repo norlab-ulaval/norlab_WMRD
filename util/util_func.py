@@ -62,6 +62,9 @@ def disp_err(x_pred, x, prediction_weights):
     x_err = x_pred - x
     x_err[5] = wrap2pi(x_err[5])
     return x_err.T @ prediction_weights @ x_err
+
+def trans_disp(x):
+    return np.linalg.norm(x[:2])
     
 def up_propa_mat(mat, ang):
     propa_cos = np.cos(ang)
