@@ -14,12 +14,18 @@ class TorchWMRDataset(Dataset):
         self.horizons_per_step = np.floor(self.steady_state_length / self.training_horizon)
 
         input = self.data.drop(['gt_icp_x', 'gt_icp_y', 'gt_icp_z', 'gt_icp_roll', 'gt_icp_pitch', 'gt_icp_yaw',
-                                'calib_step', 'cmd_vx', 'cmd_omega', 'mask'], axis=1).values
+                                'calib_step', 'cmd_vx', 'cmd_omega', 'mask', 'encoder_vx', 'encoder_omega',
+                                'icp_vx', 'icp_vy', 'icp_omega'], axis=1).values
         output = self.data[['gt_icp_x', 'gt_icp_y', 'gt_icp_z', 'gt_icp_roll', 'gt_icp_pitch', 'gt_icp_yaw']].values
         calib_step = self.data['calib_step']
         mask = self.data['mask'] == 1
         cmd_vx = self.data['cmd_vx']
         cmd_omega = self.data['cmd_omega']
+        encoder_vx = self.data['encoder_vx']
+        encoder_omega = self.data['encoder_omega']
+        icp_vx = self.data['icp_vx']
+        icp_vy = self.data['icp_vy']
+        icp_omega = self.data['icp_omega']
 
         self.x_train = torch.tensor(input)
         self.y_train = torch.tensor(output)
@@ -27,9 +33,18 @@ class TorchWMRDataset(Dataset):
         self.mask = torch.tensor(mask)
         self.cmd_vx = torch.tensor(cmd_vx)
         self.cmd_omega = torch.tensor(cmd_omega)
+        self.encoder_vx = torch.tensor(encoder_vx)
+        self.encoder_omega = torch.tensor(encoder_omega)
+        self.icp_vx = torch.tensor(icp_vx)
+        self.icp_vy = torch.tensor(icp_vy)
+        self.icp_omega = torch.tensor(icp_omega)
 
     def __len__(self):
         return len(self.y_train)
 
     def __getitem__(self, idx):
-        return self.x_train[idx], self.y_train[idx], self.calib_step[idx], self.mask[idx], self.cmd_vx[idx], self.cmd_omega[idx]
+        return self.x_train[idx], self.y_train[idx], self.calib_step[idx], self.mask[idx], self.cmd_vx[idx], self.cmd_omega[idx], \
+               self.encoder_vx[idx], self.encoder_omega[idx], self.icp_vx[idx], self.icp_vy[idx], self.icp_omega[idx]
+
+    def get_mask(self):
+        return self.mask.numpy()

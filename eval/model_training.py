@@ -16,10 +16,9 @@ from models.kinematic.enhanced_kinematic import *
 from util.util_func import *
 
 from eval.torch_dataset import TorchWMRDataset
+from eval.model_trainer import Model_Trainer
 
 from scipy.optimize import minimize
-
-
 
 # CUDA for PyTorch
 use_cuda = torch.cuda.is_available()
@@ -32,7 +31,7 @@ params = {'batch_size': 64,
           'num_workers': 6}
 max_epochs = 100
 
-train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/masked_datasets/grass_1_backward.csv'
+train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/masked_datasets/grass_1_right.csv'
 training_horizon = 2 # seconds
 timestep = 0.05 # seconds
 timesteps_per_horizon = int(training_horizon / timestep)
@@ -43,27 +42,6 @@ wmr_train_dl = DataLoader(wmr_train_dataset)
 prediction_weights = np.eye(6)
 prediction_weights_2d = np.zeros((6,6))
 prediction_weights_2d[0,0] = prediction_weights_2d[1,1] = prediction_weights_2d[5,5] = 1
-def compute_prediction_error(init_params, model, dataloader, timesteps_per_horizon, prediction_weights):
-    model.adjust_motion_params(init_params)
-    print(init_params)
-    prediction_error = 0
-    counted_pred_counter = 0
-    for i, (inputs, targets, step, mask, cmd_vx, cmd_omega) in enumerate(dataloader):
-        # print(inputs)
-        # print(targets)
-        predicted_state = inputs[0, :6].numpy()
-        mask_bool = mask.numpy()
-        if mask_bool:
-            for j in range(0, timesteps_per_horizon):
-                input_id = 6+j*2
-                predicted_state = model.predict(predicted_state, inputs[0, input_id:input_id+2].numpy())
-            horizon_error = disp_err(predicted_state.reshape((6,1)), targets.numpy().reshape((6,1)), prediction_weights_2d)
-            # print(horizon_error)
-            prediction_error += horizon_error
-            counted_pred_counter += 1
-    print('total error : ', prediction_error)
-    print('horizons accounted : ', counted_pred_counter)
-    return prediction_error
 
 #import models
 dt = 0.05
@@ -90,6 +68,9 @@ icr_assymetrical = ICR_asymmetrical(r, alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r
 args = (icr_assymetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
 init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
 bounds = [(0, 1.0), (0, 1.0), (-5.0, 5.0), (0.0, 5.0), (-5.0, 0.0)]
+method = 'Nelder-Mead'
+
+trained_params_path = 'training_results/husky/icr_asymmetrical/doughnut_grass_1_right.npy'
 
 ## Enhanced kinematic
 # body_inertia = 0.8336
@@ -99,9 +80,7 @@ bounds = [(0, 1.0), (0, 1.0), (-5.0, 5.0), (0.0, 5.0), (-5.0, 0.0)]
 # enhanced_kinematic = Enhanced_kinematic(r, baseline, body_inertia, body_mass, init_params, dt)
 # args = (enhanced_kinematic, wmr_train_dl, timesteps_per_horizon, prediction_weights)
 
-trained_params = minimize(compute_prediction_error, init_params, args=args, method='Nelder-Mead', bounds=bounds)
-# trained_params = minimize(compute_prediction_error, init_params, args=args, method='Nelder-Mead')
-print(trained_params)
+model_trainer = Model_Trainer(model=icr_assymetrical, init_params=init_params, dataloader=wmr_train_dl,
+                              timesteps_per_horizon=timesteps_per_horizon, prediction_weights=prediction_weights_2d)
 
-np.save('training_results/husky/icr_asymmetrical/doughnut_grass_1_backward.npy', trained_params.x)
-
+model_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
