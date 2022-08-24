@@ -1,7 +1,7 @@
 import numpy as np
 from util.transform_algebra import *
 
-class ICR_assymetrical:
+class ICR_asymmetrical:
     def __init__(self, r, alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r, dt):
         self.dt = dt
         self.r = r

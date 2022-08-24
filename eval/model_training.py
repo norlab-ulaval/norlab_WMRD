@@ -32,7 +32,7 @@ params = {'batch_size': 64,
           'num_workers': 6}
 max_epochs = 100
 
-train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/masked_datasets/grass_1_right.csv'
+train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/masked_datasets/grass_1_backward.csv'
 training_horizon = 2 # seconds
 timestep = 0.05 # seconds
 timesteps_per_horizon = int(training_horizon / timestep)
@@ -103,5 +103,5 @@ trained_params = minimize(compute_prediction_error, init_params, args=args, meth
 # trained_params = minimize(compute_prediction_error, init_params, args=args, method='Nelder-Mead')
 print(trained_params)
 
-np.save('training_results/husky/icr_asymmetrical/doughnut_grass_1_right.npy', trained_params.x)
+np.save('training_results/husky/icr_asymmetrical/doughnut_grass_1_backward.npy', trained_params.x)
 
