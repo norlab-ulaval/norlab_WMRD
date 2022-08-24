@@ -65,7 +65,14 @@ def disp_err(x_pred, x, prediction_weights):
 
 def trans_disp(x):
     return np.linalg.norm(x[:2])
-    
+
+def project_state_to_plane(x):
+    plane_state = np.zeros(3)
+    plane_state[0] = x[0]
+    plane_state[1] = x[1]
+    plane_state[2] = x[5]
+    return plane_state
+
 def up_propa_mat(mat, ang):
     propa_cos = np.cos(ang)
     propa_sin = np.sin(ang)
