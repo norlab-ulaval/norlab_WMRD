@@ -32,12 +32,13 @@ class Model_Trainer:
         counted_pred_counter = 0
         # self.x_train[idx], self.y_train[idx], self.calib_step[idx], self.mask[idx], self.cmd_vx[idx], self.cmd_omega[idx], \
         #                self.encoder_vx[idx], self.encoder_omega[idx], self.icp_vx[idx], self.icp_vy[idx], self.icp_omega[idx]
-        for i, (inputs, targets, step, mask, cmd_vx, cmd_omega, encoder_vx, encoder_omega, icp_vx, icp_vy, icp_omega) in enumerate(self.dataloader):
+        for i, (inputs, targets, step, cmd_vx, cmd_omega, encoder_vx, encoder_omega, icp_vx, icp_vy, icp_omega, steady_state_mask, calib_mask) in enumerate(self.dataloader):
             # print(inputs)
             # print(targets)
             predicted_state = inputs[0, :6].numpy()
-            mask_bool = mask.numpy()
-            if mask_bool:
+            steady_state_mask_bool = steady_state_mask.numpy()
+            calib_mask_bool = calib_mask.numpy()
+            if steady_state_mask_bool and calib_mask_bool:
                 for j in range(0, self.timesteps_per_horizon):
                     input_id = 6 + j * 2
                     predicted_state = self.model.predict(predicted_state, inputs[0, input_id:input_id + 2].numpy())

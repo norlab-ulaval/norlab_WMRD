@@ -31,7 +31,8 @@ params = {'batch_size': 64,
           'num_workers': 6}
 max_epochs = 100
 
-train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/masked_datasets/grass_1_right.csv'
+train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/tests/torch_dataset_all.csv'
+# train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/vel_mask_array_all.npy'
 training_horizon = 2 # seconds
 timestep = 0.05 # seconds
 timesteps_per_horizon = int(training_horizon / timestep)
@@ -70,7 +71,7 @@ init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
 bounds = [(0, 1.0), (0, 1.0), (-5.0, 5.0), (0.0, 5.0), (-5.0, 0.0)]
 method = 'Nelder-Mead'
 
-trained_params_path = 'training_results/husky/icr_asymmetrical/doughnut_grass_1_right.npy'
+trained_params_path = 'training_results/husky/icr_asymmetrical/doughnut_grass_test.npy'
 
 ## Enhanced kinematic
 # body_inertia = 0.8336
