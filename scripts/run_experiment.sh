@@ -9,39 +9,50 @@ fi
 bag_path=$1
 results_path=$2
 
-csv_file=$results_path"/data".csv
-traj_file=$results_path"/traj".vtk
-map_file=$results_path"/map".vtk
+csv_file="$results_path"/data.csv
+traj_file="$results_path"/traj.vtk
+map_file="$results_path"/map.vtk
 
-#echo $csv_file
+echo $csv_file &
+echo $traj_file &
+echo $map_file &
 
 ## start nodes and pause playing
-roslaunch norlab_imu_tools husky_imu_and_wheel_odom.launch&
-roslaunch husky_mapping realtime_mapping.launch&
+#sleep 5 | yes | rosclean purge &
+roslaunch norlab_bag_player husky.launch bagfile:=$bag_path rate:=0.5 &
+sleep 5
+roslaunch norlab_imu_tools husky_imu_and_wheel_odom.launch &
+roslaunch husky_mapping realtime_mapping.launch &
 roslaunch pose_cmds_logger logger.launch &
-roslaunch norlab_bag_player husky.launch bagfile:=$bag_path rate:=0.5&
 rviz &
 sleep 5
 rosservice call /play/pause_playback "data: false"
 
-## wait until the end of the bag
+### wait until the end of the bag
 while [[ ! -z `pgrep play` ]]
 do
 sleep 1
 done
 
-## save the map
-sleep 10
+## save the map and data
+sleep 5
 rosservice call /save_map "map_file_name:
-#data: '$map_file'"
+ data: '$map_file'"
+sleep 20
 rosservice call /save_trajectory "trajectory_file_name:
-data: '$trajectory_file'"
-rosservice call /save_data "trajectory_file_name:
-data: '$data_file'"
+ data: '$traj_file'"
+sleep 5
+rosservice call /save_data "data_file_name:
+ data: '$csv_file'"
+
 #
 ## kill everything
+sleep 30
 killall rviz
-killall pointcloud2_deskew_node
+killall pcl_deskew_node
+killall imu_and_wheel_odom_node
+killall husky_dataset_logger
 killall mapper_node
+killall map_throttler
 killall cloud_node_stamped
 killall rosmaster
