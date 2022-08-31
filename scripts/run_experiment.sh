@@ -20,8 +20,8 @@ echo $map_file &
 ## start nodes and pause playing
 #sleep 5 | yes | rosclean purge &
 roslaunch norlab_bag_player husky.launch bagfile:=$bag_path rate:=0.5 &
-sleep 5
-roslaunch norlab_imu_tools husky_imu_and_wheel_odom.launch &
+sleep 10
+#roslaunch norlab_imu_tools husky_imu_and_wheel_odom.launch &
 roslaunch husky_mapping realtime_mapping.launch &
 roslaunch pose_cmds_logger logger.launch &
 rviz &

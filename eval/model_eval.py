@@ -33,7 +33,7 @@ params = {'batch_size': 64,
           'num_workers': 6}
 max_epochs = 100
 
-train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/masked_datasets/grass_1_right.csv'
+train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/doughnut_datasets/grass_2/torch_dataset_all.csv'
 training_horizon = 2 # seconds
 timestep = 0.05 # seconds
 timesteps_per_horizon = int(training_horizon / timestep)
@@ -72,7 +72,7 @@ init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
 bounds = [(0, 1.0), (0, 1.0), (-5.0, 5.0), (0.0, 5.0), (-5.0, 0.0)]
 method = 'Nelder-Mead'
 
-trained_params_path = 'training_results/husky/icr_asymmetrical/doughnut_grass_1_right.npy'
+trained_params_path = 'training_results/husky/icr_asymmetrical/grass/steady-state/full.npy'
 trained_params = np.load(trained_params_path)
 
 ## Enhanced kinematic
@@ -86,6 +86,9 @@ trained_params = np.load(trained_params_path)
 model_evaluator = Model_Evaluator(model=icr_assymetrical, params=trained_params, dataset=wmr_train_dataset, dataloader=wmr_train_dl,
                                   timesteps_per_horizon=timesteps_per_horizon, prediction_weights=prediction_weights_2d)
 
-prediction_error_array, body_commands_array, body_encoder_array, icp_vels_array, model_body_vels_array = \
-    model_evaluator.compute_model_evaluation_metrics(trained_params)
+# prediction_error_array, body_commands_array, body_encoder_array, icp_vels_array, model_body_vels_array = \
+#     model_evaluator.compute_model_evaluation_metrics(trained_params)
 
+export_path = '../data/husky/eval_results/doughnuts/grass_2/husky_grass_2_full_eval_metrics.pkl'
+
+model_evaluator.compute_then_export_prediction_error_metrics(trained_params, export_path)

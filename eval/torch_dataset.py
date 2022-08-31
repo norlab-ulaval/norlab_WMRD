@@ -50,5 +50,22 @@ class TorchWMRDataset(Dataset):
                self.encoder_vx[idx], self.encoder_omega[idx], self.icp_vx[idx], self.icp_vy[idx], self.icp_omega[idx], \
                self.steady_state_mask[idx], self.calib_mask[idx]
 
-    def get_mask(self):
-        return self.mask.numpy()
+    def set_quadran_mask(self, quadran):
+        new_calib_mask = np.full(self.__len__(), False)
+        if quadran == 1:
+            for i in range(0, self.__len__()):
+                if self.cmd_vx[i] >= 0 and self.cmd_omega[i] <= 0:
+                    new_calib_mask[i] = True
+        if quadran == 2:
+            for i in range(0, self.__len__()):
+                if self.cmd_vx[i] >= 0 and self.cmd_omega[i] >= 0:
+                    new_calib_mask[i] = True
+        if quadran == 3:
+            for i in range(0, self.__len__()):
+                if self.cmd_vx[i] <= 0 and self.cmd_omega[i] >= 0:
+                    new_calib_mask[i] = True
+        if quadran == 4:
+            for i in range(0, self.__len__()):
+                if self.cmd_vx[i] <= 0 and self.cmd_omega[i] <= 0:
+                    new_calib_mask[i] = True
+        self.calib_mask = torch.tensor(new_calib_mask)

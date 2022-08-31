@@ -144,8 +144,8 @@ class DatasetParser:
                 icp_disp[2] = wrap2pi(icp_disp[2])
 
                 #         print(icp_states[i,4])
-                propa_cos = np.cos(self.icp_states[i, 4])
-                propa_sin = np.sin(self.icp_states[i, 4])
+                propa_cos = np.cos(self.icp_states_2d[i, 4])
+                propa_sin = np.sin(self.icp_states_2d[i, 4])
                 propa_mat[0, 0] = propa_cos
                 propa_mat[0, 1] = -propa_sin
                 propa_mat[1, 0] = propa_sin
