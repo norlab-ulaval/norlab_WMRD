@@ -69,3 +69,10 @@ class TorchWMRDataset(Dataset):
                 if self.cmd_vx[i] <= 0 and self.cmd_omega[i] <= 0:
                     new_calib_mask[i] = True
         self.calib_mask = torch.tensor(new_calib_mask)
+
+    def set_area_mask(self, vx_center, omega_center, vx_interval, omega_interval):
+        new_calib_mask = np.full(self.__len__(), False)
+        for i in range(0, self.__len__()):
+            if np.abs(self.cmd_vx[i] - vx_center) <= vx_interval / 2 and np.abs(self.cmd_omega[i] - omega_center) <= omega_interval / 2 :
+                new_calib_mask[i] = True
+        self.calib_mask = torch.tensor(new_calib_mask)

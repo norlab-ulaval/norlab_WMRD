@@ -42,6 +42,8 @@ wmr_train_dataset = TorchWMRDataset(train_dataset_path, body_or_wheel_vel='wheel
 # quadran = 4
 # wmr_train_dataset.set_quadran_mask(quadran)
 
+
+
 wmr_train_dl = DataLoader(wmr_train_dataset)
 
 prediction_weights = np.eye(6)
@@ -72,10 +74,10 @@ alpha_params = np.full((13), 1.0)
 icr_assymetrical = ICR_asymmetrical(r, alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r, dt)
 args = (icr_assymetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
 init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
-bounds = [(0, 1.0), (0, 1.0), (-5.0, 5.0), (0.0, 5.0), (-5.0, 0.0)]
+bounds = [(0, 1.0), (0, 1.0), (-5.0, 5.0), (0.01, 5.0), (-5.0, -0.001)]
 method = 'Nelder-Mead'
 
-trained_params_path = 'training_results/husky/icr_asymmetrical/grass/steady-state/full.npy'
+trained_params_path = 'training_results/husky/icr_asymmetrical/grass_1/steady-state/areas/test_1.npy'
 
 ## Enhanced kinematic
 # body_inertia = 0.8336
@@ -85,7 +87,32 @@ trained_params_path = 'training_results/husky/icr_asymmetrical/grass/steady-stat
 # enhanced_kinematic = Enhanced_kinematic(r, baseline, body_inertia, body_mass, init_params, dt)
 # args = (enhanced_kinematic, wmr_train_dl, timesteps_per_horizon, prediction_weights)
 
-model_trainer = Model_Trainer(model=icr_assymetrical, init_params=init_params, dataloader=wmr_train_dl,
-                              timesteps_per_horizon=timesteps_per_horizon, prediction_weights=prediction_weights_2d)
+vx_center = 0
+vx_interval = 1.0
+omega_center = 0
+omega_interval = 1.0
+wmr_train_dataset.set_area_mask(vx_center, omega_center, vx_interval, omega_interval)
 
-model_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
+min_lin_speed = -2.0
+max_lin_speed = 2.0
+lin_speed_step = 0.5
+
+max_ang_speed = 2.5
+n_ang_steps = 12
+
+n_lin_steps = int(max_lin_speed - min_lin_speed / lin_speed_step) + 1
+ang_step = 2 * max_ang_speed / n_ang_steps
+
+vx_interval = 1.0
+omega_interval = 1.0
+for i in range(0, n_lin_steps):
+    vx_center = min_lin_speed + i * lin_speed_step
+    for j in range(0, n_ang_steps + 1):
+        omega_center = -max_ang_speed + j * ang_step
+        wmr_train_dataset.set_area_mask(vx_center, omega_center, vx_interval, omega_interval)
+
+        model_trainer = Model_Trainer(model=icr_assymetrical, init_params=init_params, dataloader=wmr_train_dl,
+                              timesteps_per_horizon=timesteps_per_horizon, prediction_weights=prediction_weights_2d)
+        trained_params_path = 'training_results/husky/icr_asymmetrical/grass/steady-state/areas_1x1/' \
+                              + str(i) + '_' + str(j)
+        model_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
