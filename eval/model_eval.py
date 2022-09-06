@@ -1,9 +1,12 @@
+import math
+
 import matplotlib.pyplot as plt
+from pypointmatcher import pointmatcher, pointmatchersupport
+import glob
 import numpy as np
+import copy
 import pandas as pd
-
-# from model_training import compute_prediction_error
-
+import wmrde
 import torch
 from torch.utils.data import random_split
 from torch.utils.data import DataLoader
@@ -11,95 +14,81 @@ from torch.utils.data import DataLoader
 
 from models.kinematic.ICR_based import *
 from models.kinematic.Perturbed_unicycle import *
-from models.kinematic.unicycle import Unicycle
+from models.kinematic.enhanced_kinematic import *
 from util.util_func import *
 
 from eval.torch_dataset import TorchWMRDataset
+from eval.model_evaluator import Model_Evaluator
+
+from scipy.optimize import minimize
+
+# CUDA for PyTorch
+use_cuda = torch.cuda.is_available()
+device = torch.device("cuda:0" if use_cuda else "cpu")
+torch.backends.cudnn.benchmark = True
+
+# Parameters
+params = {'batch_size': 64,
+          'shuffle': True,
+          'num_workers': 6}
+max_epochs = 100
+
+train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/doughnut_datasets/grass_2/torch_dataset_all.csv'
+training_horizon = 2 # seconds
+timestep = 0.05 # seconds
+timesteps_per_horizon = int(training_horizon / timestep)
+
+wmr_train_dataset = TorchWMRDataset(train_dataset_path, body_or_wheel_vel='wheel', training_horizon=training_horizon)
+wmr_train_dl = DataLoader(wmr_train_dataset)
+
+prediction_weights = np.eye(6)
+prediction_weights_2d = np.zeros((6,6))
+prediction_weights_2d[0,0] = prediction_weights_2d[1,1] = prediction_weights_2d[5,5] = 1
 
 #import models
 dt = 0.05
 r = 0.33/2
 # r = 0.5/2
 baseline = 0.55
+alpha = 0.8
+alpha_l = 0.5
+alpha_r = 0.5
+y_icr = 1.0
+y_icr_l = 1.0
+y_icr_r = -1.0
+x_icr = -1.0
+alpha_params = np.full((13), 1.0)
 
-eval_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/parsed_data/grass_2_torch_wheel_encoder.csv'
-training_horizon = 2 # seconds
-timestep = 0.05 # seconds
-timesteps_per_horizon = int(training_horizon / timestep)
+## ICR_symmetrical
+# icr_symmetrical = ICR_symmetrical(r, alpha, y_icr, dt)
+# args = (icr_symmetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
+# init_params = [0.5, 0.5] # for icr
+# bounds = [(0, 1.0), (-5.0, 5.0)]
 
-body_cmd_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/parsed_data/grass_2_torch_body_cmd.csv'
-body_encoder_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/parsed_data/grass_2_torch_body_encoder.csv'
+# ICR assymetrical
+icr_assymetrical = ICR_asymmetrical(r, alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r, dt)
+args = (icr_assymetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
+init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
+bounds = [(0, 1.0), (0, 1.0), (-5.0, 5.0), (0.0, 5.0), (-5.0, 0.0)]
+method = 'Nelder-Mead'
 
-wmr_eval_dataset = TorchWMRDataset(eval_dataset_path, body_or_wheel_vel='wheel', training_horizon=training_horizon)
-wmr_eval_dl = DataLoader(wmr_eval_dataset)
+trained_params_path = 'training_results/husky/icr_asymmetrical/grass/steady-state/full.npy'
+trained_params = np.load(trained_params_path)
 
-wmr_body_cmd_dataset = TorchWMRDataset(body_cmd_dataset_path, body_or_wheel_vel='body', training_horizon=training_horizon)
-wmr_body_encoder_dataset = TorchWMRDataset(body_encoder_dataset_path, body_or_wheel_vel='body', training_horizon=training_horizon)
+## Enhanced kinematic
+# body_inertia = 0.8336
+# body_mass = 70
+# init_params = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+#
+# enhanced_kinematic = Enhanced_kinematic(r, baseline, body_inertia, body_mass, init_params, dt)
+# args = (enhanced_kinematic, wmr_train_dl, timesteps_per_horizon, prediction_weights)
 
-trained_params = np.load('training_results/husky/doughnut_grass_1.npy')
+model_evaluator = Model_Evaluator(model=icr_assymetrical, params=trained_params, dataset=wmr_train_dataset, dataloader=wmr_train_dl,
+                                  timesteps_per_horizon=timesteps_per_horizon, prediction_weights=prediction_weights_2d)
 
-icr_symmetrical = ICR_symmetrical(r, trained_params[0], trained_params[1], dt)
-icr_symmetrical.adjust_motion_params(trained_params)
-unicycle = Unicycle(dt)
+# prediction_error_array, body_commands_array, body_encoder_array, icp_vels_array, model_body_vels_array = \
+#     model_evaluator.compute_model_evaluation_metrics(trained_params)
 
-prediction_weights = np.eye(6)
-prediction_weights_2d = np.zeros((6,6))
-prediction_weights_2d[0,0] = prediction_weights_2d[1,1] = prediction_weights_2d[5,5] = 1
+export_path = '../data/husky/eval_results/doughnuts/grass_2/husky_grass_2_full_eval_metrics.pkl'
 
-calib_step_array = np.zeros((wmr_eval_dataset.__len__(), 1))
-prediction_errors_array = np.zeros((wmr_eval_dataset.__len__(), 1))
-
-def compute_evaluation(model, unicycle_model, eval_dataset, body_cmd_dataset, body_encoder_dataset, timesteps_per_horizon, prediction_weights):
-    n_points = eval_dataset.__len__()
-    prediction_errors_array = np.zeros((n_points, 6))
-    model_disp_array = np.zeros((n_points, 6))
-    body_cmd_disp_array = np.zeros((n_points, 6))
-    body_encoder_disp_array = np.zeros((n_points, 6))
-    icp_disp_array = np.zeros((n_points, 6))
-
-    for i in range(0, n_points):
-        input, target, step = eval_dataset.__getitem__(i)
-        body_cmd_input, body_cmd_target, body_cmd_stp = body_cmd_dataset.__getitem__(i)
-        body_encoder_input, body_encoder_target, body_encoder_stp = body_encoder_dataset.__getitem__(i)
-        input = input.numpy()
-        target = target.numpy()
-        step = step.numpy()
-        body_cmd_input = body_cmd_input.numpy()
-        body_encoder_input = body_encoder_input.numpy()
-        predicted_state_model = input[:6]
-        predicted_state_body_cmd = input[:6]
-        predicted_state_body_encoder = input[:6]
-        init_state = input[:6]
-        for j in range(0, timesteps_per_horizon):
-            input_id = 6 + j * 2
-            predicted_state_model = model.predict(predicted_state_model, input[input_id:input_id + 2])
-            predicted_state_body_cmd = unicycle_model.predict(predicted_state_body_cmd, body_cmd_input[input_id:input_id + 2])
-            predicted_state_body_encoder = unicycle_model.predict(predicted_state_body_encoder, body_encoder_input[input_id:input_id + 2])
-
-        prediction_errors_array[i, :] = target - predicted_state_model
-        prediction_errors_array[i, 5] = wrap2pi(prediction_errors_array[i, 5])
-        body_cmd_disp_array[i, :] = predicted_state_body_cmd - init_state
-        body_cmd_disp_array[i, 5] = wrap2pi(body_cmd_disp_array[i, 5])
-        body_encoder_disp_array[i, :] = predicted_state_body_encoder - init_state
-        body_encoder_disp_array[i, 5] = wrap2pi(body_encoder_disp_array[i, 5])
-        icp_disp_array[i, :] = target - init_state
-        icp_disp_array[i, 5] = wrap2pi(icp_disp_array[i, 5])
-        model_disp_array[i, :] = predicted_state_model - init_state
-        model_disp_array[i, 5] = wrap2pi(model_disp_array[i, 5])
-
-        # TODO: Figure out wrap2pi for angular displacement (need to iterate on it) / transform all displacements in body frame...
-
-    return prediction_errors_array, model_disp_array, body_cmd_disp_array, body_encoder_disp_array, icp_disp_array
-
-
-prediction_errors_array, model_disp_array, body_cmd_disp_array, \
-body_encoder_disp_array, icp_disp_array = compute_evaluation(icr_symmetrical, unicycle, wmr_eval_dataset,
-                          wmr_body_cmd_dataset, wmr_body_encoder_dataset, timesteps_per_horizon, prediction_weights)
-
-plt.plot(body_cmd_disp_array[:, 5], label='unicycle')
-plt.plot(body_encoder_disp_array[:, 5], label='encoder_DD')
-plt.plot(model_disp_array[:, 5], label='model')
-plt.plot(icp_disp_array[:, 5], label = 'icp')
-# plt.plot(prediction_errors_array[:, 5])
-plt.legend()
-plt.show()
+model_evaluator.compute_then_export_prediction_error_metrics(trained_params, export_path)

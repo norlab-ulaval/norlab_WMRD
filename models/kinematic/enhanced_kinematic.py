@@ -1,7 +1,7 @@
 import numpy as np
 from util.transform_algebra import *
 
-class Perturbed_unicycle:
+class Enhanced_kinematic:
     def __init__(self, radius, baseline, body_inertia, body_mass, params, dt):
         self.dt = dt
         self.radius = radius
