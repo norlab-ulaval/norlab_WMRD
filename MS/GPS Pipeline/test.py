@@ -41,7 +41,7 @@ def resample_utm_lattitudes_and_longitudes(utm_lattitudes, utm_longitudes, targe
     
     ratio = target_sampling_rate / prior_sampling_rate
     
-    duplication_indexes = np.arange(0, len(gps_data), 1)
+    duplication_indexes = np.arange(0, len(front_gps_data), 1)
     duplication_indexes = np.repeat(duplication_indexes, ratio)
     
     utm_lattitudes = np.array(utm_lattitudes)
@@ -94,10 +94,9 @@ def convert_unix_ros_time_to_integer(ros_time):
     ros_time = ros_time.astype(int)
     return ros_time
 
-
-
-
-
+def get_absolute_angle_in_degrees_between_two_utm_coordinates(x1, y1, x2, y2):
+    angle = np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi
+    return angle
 
 if __name__ == "__main__":
 
@@ -107,24 +106,28 @@ if __name__ == "__main__":
     complete_data['ros_time'] = convert_unix_ros_time_to_integer(complete_data.ros_time)
 
 
-    gps_data = import_gps_data_from_csv('MS/GPS Pipeline/raw_202203072326.pos')
-    gps_unix_ros_time = convert_timestamp_to_unix_ros_time(gps_data.Timestamp)
-    gps_data['ros_time'] = convert_unix_ros_time_to_integer(gps_unix_ros_time)
+    front_gps_data = import_gps_data_from_csv('MS/GPS Pipeline/raw_202203072326.pos')
+    front_gps_unix_ros_time = convert_timestamp_to_unix_ros_time(front_gps_data.Timestamp)
+    front_gps_data['ros_time'] = convert_unix_ros_time_to_integer(front_gps_unix_ros_time)
 
 
-    common_unix_array = compute_common_unix_ros_time_elements(complete_data, gps_data)
-    complete_data, gps_data = keep_data_with_same_unix_ros_time_elements(complete_data, gps_data, common_unix_array)
+    #common_unix_ros_time_array = compute_common_unix_ros_time_elements(complete_data, gps_data)
+    #complete_data, gps_data = keep_data_with_same_unix_ros_time_elements(complete_data, gps_data, common_unix_ros_time_array)
 
 
-    utm_lattitudes, utm_longitudes = get_utm_lattitudes_and_longitudes_from_gps_data(gps_data)
+    front_utm_lattitudes, front_utm_longitudes = get_utm_lattitudes_and_longitudes_from_gps_data(front_gps_data)
 
 
-    duplication_indexes, utm_lattitudes, utm_longitudes = resample_utm_lattitudes_and_longitudes(utm_lattitudes, utm_longitudes, 20, 5)
-    duplication_indexes, utm_lattitudes, utm_longitudes = cut_utm_lattitudes_and_longitudes(duplication_indexes, utm_lattitudes, utm_longitudes, len(complete_data))
+    duplication_indexes, front_utm_lattitudes, front_utm_longitudes = resample_utm_lattitudes_and_longitudes(front_utm_lattitudes, front_utm_longitudes, 20, 5)
+    duplication_indexes, front_utm_lattitudes, front_utm_longitudes = cut_utm_lattitudes_and_longitudes(duplication_indexes, front_utm_lattitudes, front_utm_longitudes, len(complete_data))
     
     
-    plot_utm_coordinates(utm_lattitudes, utm_longitudes)
+    plot_utm_coordinates(front_utm_lattitudes, front_utm_longitudes)
     #merged_data =  merge_gps_data_in_complete_data(complete_data, utm_lat, utm_lon)
     #pd.to_pickle(merged_data, 'MS/GPS Pipeline/grass_1_full_with_positions.csv')
 
     print('ALLO')
+
+
+
+
