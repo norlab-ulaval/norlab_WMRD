@@ -7,7 +7,8 @@ from util.model_func import diff_drive
 
 class DatasetParser:
     def __init__(self, raw_dataset_path, export_dataset_path, training_horizon, steady_state_step_len, wheel_radius, baseline, rate):
-        self.dataframe = pd.read_csv(raw_dataset_path, low_memory=False)
+        self.dataframe = pd.read_pickle(raw_dataset_path)
+        self.dataframe = self.dataframe[2:]
         self.export_dataset_path = export_dataset_path
         self.training_horizon = training_horizon
         self.steady_state_step_len = steady_state_step_len

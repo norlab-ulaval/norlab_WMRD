@@ -9,7 +9,7 @@ fi
 bag_path=$1
 results_path=$2
 
-csv_file="$results_path"/data.csv
+csv_file="$results_path"/data.pkl
 traj_file="$results_path"/traj.vtk
 map_file="$results_path"/map.vtk
 
@@ -19,10 +19,10 @@ echo $map_file &
 
 ## start nodes and pause playing
 #sleep 5 | yes | rosclean purge &
-roslaunch norlab_bag_player husky.launch bagfile:=$bag_path rate:=0.5 &
-sleep 10
+roslaunch norlab_bag_player warthog.launch bagfile:=$bag_path rate:=0.2 &
+sleep 2
 #roslaunch norlab_imu_tools husky_imu_and_wheel_odom.launch &
-roslaunch husky_mapping realtime_mapping.launch &
+roslaunch warthog_mapping realtime_mapping.launch &
 roslaunch pose_cmds_logger logger.launch &
 rviz &
 sleep 5
