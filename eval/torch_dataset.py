@@ -76,3 +76,10 @@ class TorchWMRDataset(Dataset):
             if np.abs(self.cmd_vx[i] - vx_center) <= vx_interval / 2 and np.abs(self.cmd_omega[i] - omega_center) <= omega_interval / 2 :
                 new_calib_mask[i] = True
         self.calib_mask = torch.tensor(new_calib_mask)
+
+    def skip_steps_mask(self, velocity_skip_array):
+        new_calib_mask = np.full(self.__len__(), True)
+        for i in range(0, self.__len__()):
+            if [self.cmd_vx[i], self.cmd_omega[i]] in velocity_skip_array.tolist():
+                new_calib_mask[i] = False
+        self.calib_mask = torch.tensor(new_calib_mask)

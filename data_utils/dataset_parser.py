@@ -2,32 +2,51 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+
 from util.util_func import *
 from util.model_func import diff_drive
 
 class DatasetParser:
-    def __init__(self, raw_dataset_path, export_dataset_path, training_horizon, steady_state_step_len, wheel_radius, baseline, rate):
+    def __init__(self, raw_dataset_path, export_dataset_path, training_horizon, robot):
         self.dataframe = pd.read_pickle(raw_dataset_path)
-        self.dataframe = self.dataframe[2:]
+        self.dataframe = self.dataframe[3:]
         self.export_dataset_path = export_dataset_path
         self.training_horizon = training_horizon
-        self.steady_state_step_len = steady_state_step_len
-        self.wheel_radius = wheel_radius
-        self.baseline = baseline
+        self.robot = robot
+
+        if robot == 'husky':
+            self.steady_state_step_len = 160
+            self.wheel_radius = 0.33 / 2
+            self.baseline = 0.55
+            self.rate = 0.05
+
+        if robot == 'warthog-wheel':
+            self.steady_state_step_len = 140
+            self.wheel_radius = 0.3
+            self.baseline = 1.1652
+            self.rate = 0.05
+
+        if robot == 'warthog-track':
+            self.steady_state_step_len = 140
+            self.wheel_radius = 0.175
+            self.baseline = 1.1652
+            self.rate = 0.05
+
         self.k = np.array([self.wheel_radius, self.baseline])
-        self.rate = rate
 
     def extract_values_from_dataset(self):
         run = self.dataframe
 
         self.timestamp = run['ros_time'].to_numpy()
-        self.timestamp = (self.timestamp - self.timestamp[0]) * 10 ** (-9)  # time (s)
+        for i in range(0, self.timestamp.shape[0]):
+            self.timestamp[i] = self.timestamp[i].secs + self.timestamp[i].nsecs * 10 ** (-9)
+        self.timestamp = (self.timestamp - self.timestamp[0])# * 10 ** (-9)  # time (s)
 
         self.icp_id = run['icp_index'].to_numpy()
         self.joy = run['joy_switch'].to_numpy()
         self.joy = self.joy == 'True'
-        self.good_calib_step = run['good_calib_step'].to_numpy()
-        self.good_calib_step = self.good_calib_step == 'True'
+        # self.good_calib_step = run['good_calib_step'].to_numpy()
+        # self.good_calib_step = self.good_calib_step == 'True'
 
         self.icp_x = run['icp_pos_x'].to_numpy()  # icp x position (m)
         self.icp_y = run['icp_pos_y'].to_numpy()  # icp y position (m)
@@ -38,8 +57,14 @@ class DatasetParser:
         self.icp_quat_z = run['icp_quat_z'].to_numpy()
         self.icp_quat_w = run['icp_quat_w'].to_numpy()
 
-        self.wheel_pos_left = run['wheel_pos_left'].to_numpy()
-        self.wheel_pos_right = run['wheel_pos_right'].to_numpy()
+        if self.robot == 'husky':
+            self.wheel_pos_left = run['wheel_pos_left'].to_numpy()
+            self.wheel_pos_right = run['wheel_pos_right'].to_numpy()
+
+        if self.robot == 'warthog-wheel' or self.robot == 'warthog-track':
+            self.wheel_left_vel = run['meas_left_vel'].to_numpy()
+            self.wheel_right_vel = run['meas_right_vel'].to_numpy()
+            self.wheel_vels = np.vstack((self.wheel_left_vel, self.wheel_right_vel)).T
 
         self.cmd_vx = run['cmd_vel_x'].to_numpy()
         self.cmd_omega = run['cmd_vel_omega'].to_numpy()
@@ -236,6 +261,7 @@ class DatasetParser:
                     j += 1
                 self.horizon_starts.pop()
 
+        print(self.horizon_starts)
     def define_calib_quadrans_mask(self, max_lin_vel, min_lin_vel, max_ang_vel, min_ang_vel):
         self.calib_mask = np.full(self.n_points, False)
 
@@ -310,7 +336,8 @@ class DatasetParser:
     def process_data(self, max_lin_vel, min_lin_vel, max_ang_vel, min_ang_vel):
         self.extract_values_from_dataset()
         self.create_calibration_step_array()
-        self.compute_wheel_vels()
+        if self.robot == 'husky':
+            self.compute_wheel_vels()
         self.compute_diff_drive_body_vels()
         self.compute_icp_based_velocity()
         self.create_steady_state_mask()

@@ -25,7 +25,7 @@ class Model_Trainer:
     def update_params(self, new_params):
         self.model.adjust_motion_params(new_params)
 
-    def compute_model_error(self, init_params):
+    def compute_model_error_all_steps(self, init_params):
         self.update_params(init_params)
         print(init_params)
         prediction_error = 0
@@ -53,7 +53,15 @@ class Model_Trainer:
         return prediction_error
 
     def train_model(self, init_params, method, bounds, saved_array_path):
-        fun = lambda x: self.compute_model_error(x)
+        fun = lambda x: self.compute_model_error_all_steps(x)
         training_result = minimize(fun, init_params, method=method, bounds=bounds)
         np.save(saved_array_path, training_result.x)
+        return training_result.x
+
+    def train_model_single_step(self, init_params, method, bounds, saved_array_path, step_id):
+        # TODO: Redo function by creating a calibration mask that is true only for a specific velocity, then log those results
+        args = (step_id)
+        fun = lambda x, step_id: self.compute_model_error_single_steps(x, step_id)
+        training_result = minimize(fun, init_params, args=args, method=method, bounds=bounds)
+        # np.save(saved_array_path, training_result.x)
         return training_result.x
