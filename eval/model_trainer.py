@@ -27,7 +27,7 @@ class Model_Trainer:
 
     def compute_model_error_all_steps(self, init_params):
         self.update_params(init_params)
-        print(init_params)
+        # print(init_params)
         prediction_error = 0
         counted_pred_counter = 0
         # self.x_train[idx], self.y_train[idx], self.calib_step[idx], self.mask[idx], self.cmd_vx[idx], self.cmd_omega[idx], \
@@ -48,8 +48,8 @@ class Model_Trainer:
                 # print(horizon_error)
                 prediction_error += horizon_error
                 counted_pred_counter += 1
-        print('total error : ', prediction_error)
-        print('horizons accounted : ', counted_pred_counter)
+        # print('total error : ', prediction_error)
+        # print('horizons accounted : ', counted_pred_counter)
         return prediction_error
 
     def train_model(self, init_params, method, bounds, saved_array_path):
@@ -58,10 +58,23 @@ class Model_Trainer:
         np.save(saved_array_path, training_result.x)
         return training_result.x
 
-    def train_model_single_step(self, init_params, method, bounds, saved_array_path, step_id):
-        # TODO: Redo function by creating a calibration mask that is true only for a specific velocity, then log those results
-        args = (step_id)
-        fun = lambda x, step_id: self.compute_model_error_single_steps(x, step_id)
-        training_result = minimize(fun, init_params, args=args, method=method, bounds=bounds)
-        # np.save(saved_array_path, training_result.x)
+    def train_model_single_step(self, init_params, method, bounds, step_id):
+        self.dataloader.dataset.single_step_mask(step_id)
+        fun = lambda x: self.compute_model_error_all_steps(x)
+        training_result = minimize(fun, init_params, method=method, bounds=bounds)
         return training_result.x
+
+    def train_model_all_single_steps(self, init_params, method, bounds, saved_array_path):
+        n_horizons = len(self.dataloader)
+        n_params = len(init_params)
+        trained_params_array = np.zeros((n_horizons, n_params))
+        for i in range(0, n_horizons):
+            if self.dataloader.dataset.steady_state_mask[i].numpy() == True:
+                print(i, '/', n_horizons)
+                print('cmd_vx: ', self.dataloader.dataset.cmd_vx[i].numpy())
+                print('cmd_omega: ', self.dataloader.dataset.cmd_omega[i].numpy())
+                trained_params_array[i, :] = self.train_model_single_step(init_params, method, bounds, step_id=i)
+                print(trained_params_array[i, :])
+            else:
+                trained_params_array[i, :] = np.full(n_params, None)
+        np.save(saved_array_path, trained_params_array)

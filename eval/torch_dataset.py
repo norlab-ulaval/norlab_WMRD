@@ -4,8 +4,8 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 class TorchWMRDataset(Dataset):
-    def __init__(self, csv_file, body_or_wheel_vel, training_horizon=2, steady_state_window = 160, rate=20):
-        self.data = pd.read_pickle(csv_file)
+    def __init__(self, pkl_file, body_or_wheel_vel, training_horizon=2, steady_state_window = 160, rate=20):
+        self.data = pd.read_pickle(pkl_file)
         self.training_horizon = training_horizon
         self.steady_state_window = steady_state_window
         self.rate = 20
@@ -15,8 +15,8 @@ class TorchWMRDataset(Dataset):
 
         input = self.data.drop(['gt_icp_x', 'gt_icp_y', 'gt_icp_z', 'gt_icp_roll', 'gt_icp_pitch', 'gt_icp_yaw',
                                 'calib_step', 'cmd_vx', 'cmd_omega', 'encoder_vx', 'encoder_omega',
-                                'icp_vx', 'icp_vy', 'icp_omega', 'steady_state_mask', 'calib_mask'], axis=1).values
-        output = self.data[['gt_icp_x', 'gt_icp_y', 'gt_icp_z', 'gt_icp_roll', 'gt_icp_pitch', 'gt_icp_yaw']].values
+                                'icp_vx', 'icp_vy', 'icp_omega', 'steady_state_mask', 'calib_mask'], axis=1).to_numpy()
+        output = self.data[['gt_icp_x', 'gt_icp_y', 'gt_icp_z', 'gt_icp_roll', 'gt_icp_pitch', 'gt_icp_yaw']].to_numpy()
         calib_step = self.data['calib_step']
         cmd_vx = self.data['cmd_vx']
         cmd_omega = self.data['cmd_omega']
@@ -77,9 +77,7 @@ class TorchWMRDataset(Dataset):
                 new_calib_mask[i] = True
         self.calib_mask = torch.tensor(new_calib_mask)
 
-    def skip_steps_mask(self, velocity_skip_array):
-        new_calib_mask = np.full(self.__len__(), True)
-        for i in range(0, self.__len__()):
-            if [self.cmd_vx[i], self.cmd_omega[i]] in velocity_skip_array.tolist():
-                new_calib_mask[i] = False
+    def single_step_mask(self, horizon_id):
+        new_calib_mask = np.full(self.__len__(), False)
+        new_calib_mask[horizon_id] = True
         self.calib_mask = torch.tensor(new_calib_mask)

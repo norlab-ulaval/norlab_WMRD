@@ -56,6 +56,7 @@ class DatasetParser:
         self.icp_quat_y = run['icp_quat_y'].to_numpy()
         self.icp_quat_z = run['icp_quat_z'].to_numpy()
         self.icp_quat_w = run['icp_quat_w'].to_numpy()
+        self.calib_state = run['calib_state'].to_numpy()
 
         if self.robot == 'husky':
             self.wheel_pos_left = run['wheel_pos_left'].to_numpy()
@@ -112,13 +113,14 @@ class DatasetParser:
         step_time = 0
 
         for i in range(1, self.n_points):
-            if self.cmd_omega[i] != prev_cmd_omega and self.cmd_omega[i] != 0:  # catches all steps except first angular of each linear step
+            if self.calib_state[i].data == 'calib' and self.cmd_omega[i] != prev_cmd_omega:  # catches all steps except first angular of each linear step
                 cmd_step_id += 1
                 prev_cmd_omega = self.cmd_omega[i]
                 self.new_command_step[i] = 1
-            if self.cmd_omega[i] == 0 and (self.cmd_vx[i] - self.cmd_vx[i - 1]) == 0.5:  # catches the first angular step of each linear step
+            if self.calib_state[i].data == 'calib' and self.cmd_vx[i] != prev_cmd_vx:  # catches the first angular step of each linear step
                 cmd_step_id += 1
                 prev_cmd_omega = self.cmd_omega[i]
+                prev_cmd_vx = self.cmd_vx[i]
                 self.new_command_step[i] = 1
 
             self.calib_step[i] = cmd_step_id
@@ -261,7 +263,7 @@ class DatasetParser:
                     j += 1
                 self.horizon_starts.pop()
 
-        print(self.horizon_starts)
+        # print(self.horizon_starts)
     def define_calib_quadrans_mask(self, max_lin_vel, min_lin_vel, max_ang_vel, min_ang_vel):
         self.calib_mask = np.full(self.n_points, False)
 

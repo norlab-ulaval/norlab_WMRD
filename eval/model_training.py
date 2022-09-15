@@ -31,7 +31,7 @@ params = {'batch_size': 64,
           'num_workers': 6}
 max_epochs = 100
 
-train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/warthog_wheel/doughnut_datasets/depot_2/torch_dataset_all.csv'
+train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/warthog_wheel/doughnut_datasets/depot_2/torch_dataset_all.pkl'
 # train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/vel_mask_array_all.npy'
 training_horizon = 2 # seconds
 timestep = 0.05 # seconds
@@ -99,12 +99,12 @@ init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
 bounds = [(0, 1.0), (0, 1.0), (-5.0, 5.0), (0.001, 5.0), (-5.0, -0.001)]
 method = 'Nelder-Mead'
 
-trained_params_path = 'training_results/warthog_wheel/icr_asymmetrical/depot_2/steady-state/train_full.npy'
+trained_params_path = 'training_results/warthog_wheel/icr_asymmetrical/depot_2/steady_state/train_full_all_horizons.npy'
 # velocity_skip_array = np.array([[5.0, -2.0], [5.0, -3.0], [5.0, -4.0]])
 # wmr_train_dataset.skip_steps_mask(velocity_skip_array)
 model_trainer = Model_Trainer(model=icr_assymetrical, init_params=init_params, dataloader=wmr_train_dl,
                               timesteps_per_horizon=timesteps_per_horizon, prediction_weights=prediction_weights_2d)
-model_trainer.train_model_single_step(init_params, method=method, bounds=bounds, saved_array_path=trained_params_path, step_id=90)
+model_trainer.train_model_all_single_steps(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
 # model_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
 
 
