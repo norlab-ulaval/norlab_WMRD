@@ -174,5 +174,5 @@ if __name__ == "__main__":
     complete_data_sampling_rate_in_hz = 20
     gps_data_sampling_rate_in_hz = 5
 
-    complete_data = main(complete_data_path, front_gps_path, middle_gps_path, back_gps_path, complete_data_sampling_rate_in_hz, gps_data_sampling_rate_in_hz, new_complete_data_path)
+    complete_data = main(complete_data_path, front_gps_path, middle_gps_path, back_gps_path, complete_data_sampling_rate_in_hz, gps_data_sampling_rate_in_hz)
     pd.to_pickle(complete_data, new_complete_data_path)
