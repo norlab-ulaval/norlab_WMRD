@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-
 from util.util_func import *
 from util.model_func import diff_drive
 
@@ -32,43 +31,56 @@ class DatasetParser:
             self.baseline = 1.1652
             self.rate = 0.05
 
+        if robot == 'marmotte':
+            self.steady_state_step_len = 140
+            self.wheel_radius = 0.116
+            self.baseline = 0.62
+            self.training_horizon = 2
+            self.rate = 0.05
+
         self.k = np.array([self.wheel_radius, self.baseline])
 
     def extract_values_from_dataset(self):
         run = self.dataframe
 
-        self.timestamp = run['ros_time'].to_numpy()
+        self.timestamp = run['ros_time'].to_numpy().astype('double')
+        print(self.timestamp)
         for i in range(0, self.timestamp.shape[0]):
-            self.timestamp[i] = self.timestamp[i].secs + self.timestamp[i].nsecs * 10 ** (-9)
+            self.timestamp[i] = self.timestamp[i] * 10 ** (-9)
         self.timestamp = (self.timestamp - self.timestamp[0])# * 10 ** (-9)  # time (s)
 
-        self.icp_id = run['icp_index'].to_numpy()
+        self.icp_id = run['icp_index'].to_numpy().astype('int')
         self.joy = run['joy_switch'].to_numpy()
         self.joy = self.joy == 'True'
         # self.good_calib_step = run['good_calib_step'].to_numpy()
         # self.good_calib_step = self.good_calib_step == 'True'
 
-        self.icp_x = run['icp_pos_x'].to_numpy()  # icp x position (m)
-        self.icp_y = run['icp_pos_y'].to_numpy()  # icp y position (m)
-        self.icp_z = run['icp_pos_z'].to_numpy()  # icp y position (m)
+        self.icp_x = run['icp_pos_x'].to_numpy().astype('float')  # icp x position (m)
+        self.icp_y = run['icp_pos_y'].to_numpy().astype('float')  # icp y position (m)
+        self.icp_z = run['icp_pos_z'].to_numpy().astype('float')  # icp y position (m)
 
-        self.icp_quat_x = run['icp_quat_x'].to_numpy()
-        self.icp_quat_y = run['icp_quat_y'].to_numpy()
-        self.icp_quat_z = run['icp_quat_z'].to_numpy()
-        self.icp_quat_w = run['icp_quat_w'].to_numpy()
-        self.calib_state = run['calib_state'].to_numpy()
+        self.icp_quat_x = run['icp_quat_x'].to_numpy().astype('float')
+        self.icp_quat_y = run['icp_quat_y'].to_numpy().astype('float')
+        self.icp_quat_z = run['icp_quat_z'].to_numpy().astype('float')
+        self.icp_quat_w = run['icp_quat_w'].to_numpy().astype('float')
+        self.calib_state = run['calib_state'].to_numpy().astype('str')
 
         if self.robot == 'husky':
-            self.wheel_pos_left = run['wheel_pos_left'].to_numpy()
-            self.wheel_pos_right = run['wheel_pos_right'].to_numpy()
+            self.wheel_pos_left = run['wheel_pos_left'].to_numpy().astype('float')
+            self.wheel_pos_right = run['wheel_pos_right'].to_numpy().astype('float')
 
         if self.robot == 'warthog-wheel' or self.robot == 'warthog-track':
-            self.wheel_left_vel = run['meas_left_vel'].to_numpy()
-            self.wheel_right_vel = run['meas_right_vel'].to_numpy()
+            self.wheel_left_vel = run['meas_left_vel'].to_numpy().astype('float')
+            self.wheel_right_vel = run['meas_right_vel'].to_numpy().astype('float')
             self.wheel_vels = np.vstack((self.wheel_left_vel, self.wheel_right_vel)).T
 
-        self.cmd_vx = run['cmd_vel_x'].to_numpy()
-        self.cmd_omega = run['cmd_vel_omega'].to_numpy()
+        if self.robot == 'marmotte':
+            self.wheel_left_vel = run['meas_left_vel'].to_numpy().astype('float')
+            self.wheel_right_vel = run['meas_right_vel'].to_numpy().astype('float')
+            self.wheel_vels = np.vstack((self.wheel_left_vel, self.wheel_right_vel)).T
+
+        self.cmd_vx = run['cmd_vel_x'].to_numpy().astype('float')
+        self.cmd_omega = run['cmd_vel_omega'].to_numpy().astype('float')
 
         self.n_points = self.timestamp.shape[0]
 
@@ -82,11 +94,11 @@ class DatasetParser:
                                                                                        self.icp_quat_y[i],
                                                                                        self.icp_quat_z[i])  # icp orientation (rad)
 
-        self.icp_id_arr = run['icp_index'].to_numpy()
+        self.icp_id_arr = run['icp_index'].to_numpy().astype('int')
 
-        self.imu_pitch = run['imu_y'].to_numpy()
-        self.imu_roll = run['imu_x'].to_numpy()
-        self.imu_yaw = run['imu_z'].to_numpy()
+        self.imu_pitch = run['imu_y'].to_numpy().astype('float')
+        self.imu_roll = run['imu_x'].to_numpy().astype('float')
+        self.imu_yaw = run['imu_z'].to_numpy().astype('float')
         self.imu_euler = np.column_stack((self.imu_roll, self.imu_pitch, self.imu_yaw))
 
         self.icp_quat = np.column_stack((self.icp_quat_x, self.icp_quat_y,
@@ -113,11 +125,11 @@ class DatasetParser:
         step_time = 0
 
         for i in range(1, self.n_points):
-            if self.calib_state[i].data == 'calib' and self.cmd_omega[i] != prev_cmd_omega:  # catches all steps except first angular of each linear step
+            if self.calib_state[i] == 'calib' and self.cmd_omega[i] != prev_cmd_omega:  # catches all steps except first angular of each linear step
                 cmd_step_id += 1
                 prev_cmd_omega = self.cmd_omega[i]
                 self.new_command_step[i] = 1
-            if self.calib_state[i].data == 'calib' and self.cmd_vx[i] != prev_cmd_vx:  # catches the first angular step of each linear step
+            if self.calib_state[i] == 'calib' and self.cmd_vx[i] != prev_cmd_vx:  # catches the first angular step of each linear step
                 cmd_step_id += 1
                 prev_cmd_omega = self.cmd_omega[i]
                 prev_cmd_vx = self.cmd_vx[i]
@@ -263,7 +275,7 @@ class DatasetParser:
                     j += 1
                 self.horizon_starts.pop()
 
-        # print(self.horizon_starts)
+        print(self.horizon_starts)
     def define_calib_quadrans_mask(self, max_lin_vel, min_lin_vel, max_ang_vel, min_ang_vel):
         self.calib_mask = np.full(self.n_points, False)
 
@@ -300,7 +312,7 @@ class DatasetParser:
             torch_input_array[i, 12] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 13])  # icp_vy
             torch_input_array[i, 13] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 14])  # icp_omega
             torch_input_array[i, 14] = self.parsed_dataset[horizon_start, 21]  # steady_state_mask
-            torch_input_array[i, 15] = self.calib_mask[horizon_start]  # steady_state_mask
+            torch_input_array[i, 15] = self.calib_mask[horizon_start]  # calib_mask
 
 
             for j in range(0, timesteps_per_horizon):
