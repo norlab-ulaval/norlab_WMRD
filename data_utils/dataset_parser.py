@@ -208,10 +208,15 @@ class DatasetParser:
 
     def create_steady_state_mask(self):
         self.steady_state_mask = np.full(self.n_points, False)
-
         for i in range(0, self.n_points - 1):
             if self.calib_step[i + 1] != self.calib_step[i]:
-                self.steady_state_mask[i - self.steady_state_step_len:i] = True
+                horizon_elapsed = 0
+                j = i
+                while horizon_elapsed < self.training_horizon:
+                    horizon_elapsed += (self.timestamp[j] - self.timestamp[j-1])
+                    j -= 1
+                self.steady_state_mask[i - j:i] = True
+
 
     def concatenate_into_full_dataframe(self):
         self.parsed_dataset = np.concatenate((self.timestamp.reshape(self.n_points, 1), self.imu_euler,
