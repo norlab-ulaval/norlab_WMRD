@@ -4,6 +4,7 @@ import pandas as pd
 
 from util.util_func import *
 from util.model_func import diff_drive
+from models.kinematic.ideal_diff_drive import Ideal_diff_drive
 
 class DatasetParser:
     def __init__(self, raw_dataset_path, export_dataset_path, training_horizon, robot):
@@ -38,6 +39,7 @@ class DatasetParser:
             self.training_horizon = 2
             self.rate = 0.05
 
+        self.ideal_diff_drive = Ideal_diff_drive(self.wheel_radius, self.baseline, self.rate)
         self.k = np.array([self.wheel_radius, self.baseline])
 
     def extract_values_from_dataset(self):
@@ -79,10 +81,16 @@ class DatasetParser:
             self.wheel_right_vel = run['meas_right_vel'].to_numpy().astype('float')
             self.wheel_vels = np.vstack((self.wheel_left_vel, self.wheel_right_vel)).T
 
+        self.n_points = self.timestamp.shape[0]
+
         self.cmd_vx = run['cmd_vel_x'].to_numpy().astype('float')
         self.cmd_omega = run['cmd_vel_omega'].to_numpy().astype('float')
+        self.cmd_body_vels = np.concatenate((self.cmd_vx.reshape(self.n_points, 1),  self.cmd_omega.reshape(self.n_points, 1)), axis=1)
 
-        self.n_points = self.timestamp.shape[0]
+
+        self.cmd_wheel_vels = np.zeros((self.n_points, 2))
+        for i in range(0, self.n_points):
+            self.cmd_wheel_vels[i, :] = self.ideal_diff_drive.compute_wheel_vels(self.cmd_body_vels[i, :])
 
         self.icp_roll = np.zeros(self.n_points)
         self.icp_pitch = np.zeros(self.n_points)
@@ -227,7 +235,7 @@ class DatasetParser:
                                               self.steady_state_mask.reshape(self.n_points, 1)), axis=1)
         cols = ['timestamp', 'imu_roll_vel', 'imu_pitch_vel', 'imu_yaw_vel', 'cmd_vx', 'cmd_omega',
                 'icp_x', 'icp_y', 'icp_z', 'icp_roll', 'icp_pitch', 'icp_yaw', 'icp_vx', 'icp_vy', 'icp_omega',
-                'wheel_left_vel', 'wheel_right_vel', 'diff_drive_vels_x', 'diff_drive_vels_y', 'diff_drive_vels_omega',
+                'encoder_wheel_left_vel', 'encoder_wheel_right_vel', 'diff_drive_vels_x', 'diff_drive_vels_y', 'diff_drive_vels_omega',
                 'calib_step', 'steady_state_mask']
 
         self.parsed_dataset_df = pd.DataFrame(self.parsed_dataset, columns=cols)
@@ -339,8 +347,8 @@ class DatasetParser:
         cols.append('steady_state_mask')
         cols.append('calib_mask')
         for i in range(0, timesteps_per_horizon):
-            str_cmd_vx_i = 'cmd_left_wheel_' + str(i)
-            str_cmd_omega_i = 'cmd_right_wheel_' + str(i)
+            str_cmd_vx_i = 'left_wheel_vel_' + str(i)
+            str_cmd_omega_i = 'right_wheel_vel_' + str(i)
             cols.append(str_cmd_vx_i)
             cols.append(str_cmd_omega_i)
         cols.append('gt_icp_x')
