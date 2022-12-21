@@ -42,8 +42,6 @@ wmr_train_dataset = TorchWMRDataset(train_dataset_path, body_or_wheel_vel='wheel
 # quadran = 4
 # wmr_train_dataset.set_quadran_mask(quadran)
 
-
-
 wmr_train_dl = DataLoader(wmr_train_dataset)
 
 prediction_weights = np.eye(6)
@@ -91,30 +89,31 @@ if robot == 'marmotte':
     r = input_space_dataframe['calibrated_radius [m]'].to_numpy()[0]
     baseline = input_space_dataframe['calibrated baseline [m]'].to_numpy()[0]
     alpha = 0.8
-    alpha_l = 0.5
-    alpha_r = 0.5
-    y_icr = 1.0
-    y_icr_l = 1.0
-    y_icr_r = -1.0
-    x_icr = -1.0
+    alpha_l = 0.9
+    alpha_r = 0.9
+    y_icr = 0.5
+    y_icr_l = 0.5
+    y_icr_r = -0.5
+    x_icr = 0.1
 
-## ICR_symmetrical
-# icr_symmetrical = ICR_symmetrical(r, alpha, y_icr, dt)
-# args = (icr_symmetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
-# init_params = [0.5, 0.5] # for icr
-# bounds = [(0, 1.0), (-5.0, 5.0)]
-
-# ICR assymetrical
-icr_assymetrical = ICR_asymmetrical(r, alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r, dt)
-args = (icr_assymetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
-init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
-bounds = [(0, 1.0), (0, 1.0), (-5.0, 5.0), (0.001, 5.0), (-5.0, -0.001)]
+# ICR_symmetrical
+icr_symmetrical = ICR_symmetrical(r, alpha, x_icr, dt)
+args = (icr_symmetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
+init_params = [1.0, 0.5] # for icr
+bounds = [(0, 1.5), (-5.0, 5.0)]
 method = 'Nelder-Mead'
 
-trained_params_path = 'training_results/marmotte/icr_asymmetrical/grand_salon_a/train_full_all_horizons.npy'
+# ICR asymmetrical
+# icr_asymmetrical = ICR_asymmetrical(r, alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r, dt)
+# args = (icr_asymmetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
+# init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
+# bounds = [(0, 1.5), (0, 1.5), (-5.0, 5.0), (0.001, 5.0), (-5.0, -0.001)]
+# method = 'Nelder-Mead'
+
+trained_params_path = 'training_results/marmotte/icr_symmetrical/grand_salon_a/train_full_all_horizons.npy'
 # velocity_skip_array = np.array([[5.0, -2.0], [5.0, -3.0], [5.0, -4.0]])
 # wmr_train_dataset.skip_steps_mask(velocity_skip_array)
-model_trainer = Model_Trainer(model=icr_assymetrical, init_params=init_params, dataloader=wmr_train_dl,
+model_trainer = Model_Trainer(model=icr_symmetrical, init_params=init_params, dataloader=wmr_train_dl,
                               timesteps_per_horizon=timesteps_per_horizon, prediction_weights=prediction_weights_2d)
 # model_trainer.train_model_all_single_steps(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
 model_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
