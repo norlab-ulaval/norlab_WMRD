@@ -1,10 +1,10 @@
 import math
-from pypointmatcher import pointmatcher, pointmatchersupport
+# from pypointmatcher import pointmatcher, pointmatchersupport
 import glob
 import numpy as np
 import copy
 import pandas as pd
-import wmrde
+# import wmrde
 import torch
 from torch.utils.data import random_split
 from torch.utils.data import DataLoader
@@ -31,7 +31,7 @@ params = {'batch_size': 64,
           'num_workers': 6}
 max_epochs = 100
 
-train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/warthog_wheel/doughnut_datasets/depot_2/torch_dataset_all.pkl'
+train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/grand_salon_12_12_a/torch_dataset_all.pkl'
 # train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/vel_mask_array_all.npy'
 training_horizon = 2 # seconds
 timestep = 0.05 # seconds
@@ -53,7 +53,7 @@ prediction_weights_2d[0,0] = prediction_weights_2d[1,1] = prediction_weights_2d[
 #import models
 dt = 0.05
 # r = 0.5/2
-robot = 'warthog-wheel'
+robot = 'marmotte'
 if robot == 'husky':
     r = 0.33/2
     baseline = 0.55
@@ -86,6 +86,18 @@ if robot == 'warthog-track':
     x_icr = -1.0
 alpha_params = np.full((13), 1.0)
 
+if robot == 'marmotte':
+    input_space_dataframe = pd.read_pickle('/home/dominic/repos/norlab_WMRD/data/marmotte/input_space/input_space_data.pkl')
+    r = input_space_dataframe['calibrated_radius [m]'].to_numpy()[0]
+    baseline = input_space_dataframe['calibrated baseline [m]'].to_numpy()[0]
+    alpha = 0.8
+    alpha_l = 0.5
+    alpha_r = 0.5
+    y_icr = 1.0
+    y_icr_l = 1.0
+    y_icr_r = -1.0
+    x_icr = -1.0
+
 ## ICR_symmetrical
 # icr_symmetrical = ICR_symmetrical(r, alpha, y_icr, dt)
 # args = (icr_symmetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
@@ -99,13 +111,13 @@ init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
 bounds = [(0, 1.0), (0, 1.0), (-5.0, 5.0), (0.001, 5.0), (-5.0, -0.001)]
 method = 'Nelder-Mead'
 
-trained_params_path = 'training_results/warthog_wheel/icr_asymmetrical/depot_2/steady_state/train_full_all_horizons.npy'
+trained_params_path = 'training_results/marmotte/icr_asymmetrical/grand_salon_a/train_full_all_horizons.npy'
 # velocity_skip_array = np.array([[5.0, -2.0], [5.0, -3.0], [5.0, -4.0]])
 # wmr_train_dataset.skip_steps_mask(velocity_skip_array)
 model_trainer = Model_Trainer(model=icr_assymetrical, init_params=init_params, dataloader=wmr_train_dl,
                               timesteps_per_horizon=timesteps_per_horizon, prediction_weights=prediction_weights_2d)
-model_trainer.train_model_all_single_steps(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
-# model_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
+# model_trainer.train_model_all_single_steps(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
+model_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
 
 
 ## Enhanced kinematic

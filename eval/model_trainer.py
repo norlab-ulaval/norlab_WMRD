@@ -32,14 +32,13 @@ class Model_Trainer:
         counted_pred_counter = 0
         # self.x_train[idx], self.y_train[idx], self.calib_step[idx], self.mask[idx], self.cmd_vx[idx], self.cmd_omega[idx], \
         #                self.encoder_vx[idx], self.encoder_omega[idx], self.icp_vx[idx], self.icp_vy[idx], self.icp_omega[idx]
-        for i, (inputs, targets, step, cmd_vx, cmd_omega, encoder_vx, encoder_omega, icp_vx, icp_vy, icp_omega, steady_state_mask, calib_mask) in enumerate(self.dataloader):
+        for i, (inputs, targets, step, icp_vx, icp_vy, icp_omega, steady_state_mask, calib_mask) in enumerate(self.dataloader):
             # print(inputs)
             # print(targets)
             predicted_state = inputs[0, :6].numpy()
             steady_state_mask_bool = steady_state_mask.numpy()
             calib_mask_bool = calib_mask.numpy()
-            if steady_state_mask_bool and calib_mask_bool:
-            # if True:
+            if steady_state_mask_bool:
                 for j in range(0, self.timesteps_per_horizon):
                     input_id = 6 + j * 2
                     predicted_state = self.model.predict(predicted_state, inputs[0, input_id:input_id + 2].numpy())
@@ -48,8 +47,8 @@ class Model_Trainer:
                 # print(horizon_error)
                 prediction_error += horizon_error
                 counted_pred_counter += 1
-        # print('total error : ', prediction_error)
-        # print('horizons accounted : ', counted_pred_counter)
+        print('total error : ', prediction_error)
+        print('horizons accounted : ', counted_pred_counter)
         return prediction_error
 
     def train_model(self, init_params, method, bounds, saved_array_path):
@@ -71,8 +70,8 @@ class Model_Trainer:
         for i in range(0, n_horizons):
             if self.dataloader.dataset.steady_state_mask[i].numpy() == True:
                 print(i, '/', n_horizons)
-                print('cmd_vx: ', self.dataloader.dataset.cmd_vx[i].numpy())
-                print('cmd_omega: ', self.dataloader.dataset.cmd_omega[i].numpy())
+                # print('cmd_vx: ', self.dataloader.dataset.cmd_vx[i].numpy())
+                # print('cmd_omega: ', self.dataloader.dataset.cmd_omega[i].numpy())
                 trained_params_array[i, :] = self.train_model_single_step(init_params, method, bounds, step_id=i)
                 print(trained_params_array[i, :])
             else:
