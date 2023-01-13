@@ -27,7 +27,7 @@ class Model_Trainer:
 
     def compute_model_error_all_steps(self, init_params):
         self.update_params(init_params)
-        # print(init_params)
+        print(init_params)
         prediction_error = 0
         counted_pred_counter = 0
         # self.x_train[idx], self.y_train[idx], self.calib_step[idx], self.mask[idx], self.cmd_vx[idx], self.cmd_omega[idx], \
@@ -38,7 +38,8 @@ class Model_Trainer:
             predicted_state = inputs[0, :6].numpy()
             steady_state_mask_bool = steady_state_mask.numpy()
             calib_mask_bool = calib_mask.numpy()
-            if steady_state_mask_bool:
+            # if steady_state_mask_bool:
+            if True:
                 for j in range(0, self.timesteps_per_horizon):
                     input_id = 6 + j * 2
                     predicted_state = self.model.predict(predicted_state, inputs[0, input_id:input_id + 2].numpy())

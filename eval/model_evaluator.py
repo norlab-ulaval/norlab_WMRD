@@ -64,7 +64,8 @@ class Model_Evaluator:
             yaw_to_rotmat2d(self.body_to_world_rotmat, predicted_state[5])
             steady_state_mask_bool = steady_state_mask.numpy()
             calib_mask_bool = calib_mask.numpy()
-            if steady_state_mask_bool:
+            # if steady_state_mask_bool:
+            if True:
                 for j in range(0, self.timesteps_per_horizon):
                     input_id = 6 + j * 2
                     predicted_state = self.model.predict(predicted_state, inputs[0, input_id:input_id + 2].numpy())
