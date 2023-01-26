@@ -17,6 +17,7 @@ from util.util_func import *
 
 from eval.torch_dataset import TorchWMRDataset
 from eval.model_trainer import Model_Trainer
+from eval.stochastic_trainer import Stochastic_Trainer
 
 from scipy.optimize import minimize
 
@@ -31,7 +32,7 @@ params = {'batch_size': 64,
           'num_workers': 6}
 max_epochs = 100
 
-train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/grand_salon_20_01_a/torch_dataset_all.pkl'
+train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/grand_salon_12_12_a/torch_dataset_all.pkl'
 # train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/vel_mask_array_all.npy'
 training_horizon = 2 # seconds
 timestep = 0.05 # seconds
@@ -118,49 +119,17 @@ method = 'Nelder-Mead'
 body_inertia = 0.8336
 body_mass = 70
 init_params = [0.2, 0.2, 0.0, 0.0]
-init_stoch_params = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+init_stoch_params = [0.01, 0.001, 0.001, 0.01, 0.001, 0.01]
 enhanced_kinematic = Enhanced_kinematic(r, baseline, body_inertia, body_mass, init_params, init_stoch_params, dt)
 args = (enhanced_kinematic, wmr_train_dl, timesteps_per_horizon, prediction_weights)
-bounds = [(-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)]
+bounds = [(0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0)]
 
-trained_params_path = 'training_results/marmotte/enhanced_kinematic/grand_salon_a/train_full_all_horizons.npy'
+trained_params_path = 'training_results/marmotte/enhanced_kinematic/grand_salon_a/train_stochastic_all_horizons.npy'
 individual_trained_params_array = 'training_results/marmotte/icr_symmetrical/grand_salon_a/train_individual_horizons.npy'
 # velocity_skip_array = np.array([[5.0, -2.0], [5.0, -3.0], [5.0, -4.0]])
 # wmr_train_dataset.skip_steps_mask(velocity_skip_array)
-model_trainer = Model_Trainer(model=enhanced_kinematic, init_params=init_params, dataloader=wmr_train_dl,
-                              timesteps_per_horizon=timesteps_per_horizon, prediction_weights=prediction_weights_2d)
-model_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
+stoch_trainer = Stochastic_Trainer(model=enhanced_kinematic, init_stoch_params=init_stoch_params, dataloader=wmr_train_dl,
+                              timesteps_per_horizon=timesteps_per_horizon, init_pred_covariance=np.zeros((3,3)))
+stoch_trainer.train_model(init_stoch_params=init_stoch_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
 # model_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
 # model_trainer.train_model_all_single_steps(init_params=init_params, method=method, bounds=bounds, saved_array_path=individual_trained_params_array)
-
-
-
-# vx_center = 0
-# vx_interval = 1.0
-# omega_center = 0
-# omega_interval = 1.0
-# wmr_train_dataset.set_area_mask(vx_center, omega_center, vx_interval, omega_interval)
-#
-# min_lin_speed = -2.0
-# max_lin_speed = 2.0
-# lin_speed_step = 0.5
-#
-# max_ang_speed = 2.5
-# n_ang_steps = 12
-#
-# n_lin_steps = int(max_lin_speed - min_lin_speed / lin_speed_step) + 1
-# ang_step = 2 * max_ang_speed / n_ang_steps
-#
-# vx_interval = 1.0
-# omega_interval = 1.0
-# for i in range(0, n_lin_steps):
-#     vx_center = min_lin_speed + i * lin_speed_step
-#     for j in range(0, n_ang_steps + 1):
-#         omega_center = -max_ang_speed + j * ang_step
-#         wmr_train_dataset.set_area_mask(vx_center, omega_center, vx_interval, omega_interval)
-#
-#         model_trainer = Model_Trainer(model=icr_assymetrical, init_params=init_params, dataloader=wmr_train_dl,
-#                               timesteps_per_horizon=timesteps_per_horizon, prediction_weights=prediction_weights_2d)
-#         trained_params_path = 'training_results/husky/icr_asymmetrical/grass/steady-state/areas_1x1/' \
-#                               + str(i) + '_' + str(j)
-#         model_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)

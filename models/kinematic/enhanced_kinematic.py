@@ -26,6 +26,7 @@ class Enhanced_kinematic:
         self.input_acceleration = np.zeros((3, 1))
 
         self.rotation_body_to_world = np.eye(2)
+        self.rotation_body_to_world_3d = np.eye(3)
         self.body_vel_world_3d = np.zeros(6)
         self.body_vel_world_2d = np.zeros(3)
         self.state_2d = np.zeros(3)
@@ -46,12 +47,14 @@ class Enhanced_kinematic:
 
         # self.slip_vel[0] = self.params[0] * (self.body_force[0] / self.body_force[2]) * self.diff_drive_vel[0] \
         #                    + self.params[1] * self.diff_drive_vel[0]
-        self.slip_vel[0] = self.params[0] * self.diff_drive_vel[0] + self.params[1] * self.diff_drive_acceleration[0]
-        self.slip_vel[1] = self.params[2] * (self.body_force[1] / self.body_force[2]) * self.diff_drive_vel[0]
+        # self.slip_vel[0] = self.params[0] * self.diff_drive_vel[0] + self.params[1] * self.diff_drive_acceleration[0]
+        self.slip_vel[0] = self.params[0] * self.diff_drive_vel[0]
+        self.slip_vel[1] = self.params[1] * (self.body_force[1] / self.body_force[2]) * self.diff_drive_vel[0]
         # self.slip_vel[2] = self.params[3] * (self.body_force[1] / self.body_force[2]) * self.diff_drive_vel[0] \
         #                    + self.params[4] * self.diff_drive_vel[0] + self.params[5] * self.diff_drive_vel[2]
-        self.slip_vel[2] = self.params[3] * self.diff_drive_vel[0] + self.params[4] * self.diff_drive_vel[2] + \
-                           self.params[5] * self.diff_drive_acceleration[2]
+        self.slip_vel[2] = self.params[2] * self.diff_drive_vel[0] + self.params[3] * self.diff_drive_vel[2]
+        # self.slip_vel[2] = self.params[3] * self.diff_drive_vel[0] + self.params[4] * self.diff_drive_vel[2] + \
+        #                   self.params[5] * self.diff_drive_acceleration[2]
 
     def predict(self, init_state, input):
         """
@@ -62,6 +65,7 @@ class Enhanced_kinematic:
         self.state_2d[:2] = init_state[:2]
         self.state_2d[2] = init_state[-1]
         yaw_to_rotmat2d(self.rotation_body_to_world, init_state[-1])
+        yaw_to_rotmat2d(self.rotation_body_to_world_3d[:2, :2], init_state[-1])
         gravity_vector = 9.8 * euler_to_rotmat(init_state[2:])[:, 2:]
 
         self.diff_drive_vel = np.reshape(self.diff_drive_jacobian @ input, (3,1))
@@ -74,6 +78,8 @@ class Enhanced_kinematic:
         self.body_vel_world_3d[:2] = self.body_vel_world_2d[:2]
         self.body_vel_world_3d[-1] = self.body_vel_world_2d[-1]
         self.prev_diff_drive_vel = self.diff_drive_vel
+        # print('ek')
+        # print(self.body_vel_world_3d)
         return init_state + self.body_vel_world_3d * self.dt
 
     def propagate_uncertainty(self, init_state, input, prediction_covariance):
@@ -86,18 +92,31 @@ class Enhanced_kinematic:
 
         self.compute_slip_velocity(gravity_vector)
         body_vel = self.diff_drive_vel - self.slip_vel
+        yaw_to_rotmat2d(self.rotation_body_to_world_3d[:2, :2], init_state[-1] + body_vel[2] * self.dt)
         self.body_vel_world_2d[:2] = np.reshape(self.rotation_body_to_world @ body_vel[:2], (2))
         self.body_vel_world_2d[2] = body_vel[2]
         self.body_vel_world_3d[:2] = self.body_vel_world_2d[:2]
         self.body_vel_world_3d[-1] = self.body_vel_world_2d[-1]
 
-        self.state_transition_matrix[0,2] = -self.body_vel_world_2d[1]
-        self.state_transition_matrix[1,2] = self.body_vel_world_2d[0]
+        self.state_transition_matrix[0,2] = -body_vel[1] * self.dt
+        self.state_transition_matrix[1,2] = body_vel[0] * self.dt
+        # print('state_trans')
+        # print(self.state_transition_matrix)
 
-        self.input_covariance = self.rotation_body_to_world @ self.noise_spectral_density @ self.rotation_body_to_world.T * self.dt
+        input_transition_matrix = self.state_transition_matrix @ self.rotation_body_to_world_3d
 
+        self.input_covariance = input_transition_matrix @ self.noise_spectral_density @ input_transition_matrix.T
+        # self.input_covariance = self.rotation_body_to_world_3d @ self.noise_spectral_density @ self.rotation_body_to_world_3d.T * self.dt
+        # print('input_cov')
+        # print(self.input_covariance)
+
+        # print('pred_cov_comp_init')
+        # print(prediction_covariance)
         self.prediction_covariance = self.state_transition_matrix @ prediction_covariance @ self.state_transition_matrix.T + self.input_covariance
+        # print('pred_cov_comp')
+        # print(self.prediction_covariance)
 
+        return self.prediction_covariance
     def adjust_motion_params(self, params):
         """
 
@@ -105,4 +124,10 @@ class Enhanced_kinematic:
         :return:
         """
         self.params = params
+        return None
+
+    def adjust_stoch_params(self, stoch_params):
+        self.noise_spectral_density = np.array([[stoch_params[0], stoch_params[1], stoch_params[2]],
+                                                [stoch_params[1], stoch_params[3], stoch_params[4]],
+                                                [stoch_params[2], stoch_params[4], stoch_params[5]]])
         return None

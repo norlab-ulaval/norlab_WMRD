@@ -22,11 +22,20 @@ class TorchWMRDataset(Dataset):
 
         input_cols = ['init_icp_x', 'init_icp_y', 'init_icp_z', 'init_icp_roll', 'init_icp_pitch', 'init_icp_yaw']
         for i in range(0, self.timesteps_per_horizon):
-            str_cmd_vx_i = 'cmd_left_' + str(i)
-            str_cmd_omega_i = 'cmd_right_' + str(i)
-            input_cols.append(str_cmd_vx_i)
-            input_cols.append(str_cmd_omega_i)
+            str_cmd_left_i = 'cmd_left_' + str(i)
+            str_cmd_right_i = 'cmd_right_' + str(i)
+            input_cols.append(str_cmd_left_i)
+            input_cols.append(str_cmd_right_i)
         input = self.data[input_cols].to_numpy()
+
+        encoder_cols = []
+        for i in range(0, self.timesteps_per_horizon):
+            str_encoder_vx_i = 'left_wheel_vel_' + str(i)
+            str_encoder_omega_i = 'right_wheel_vel_' + str(i)
+            encoder_cols.append(str_encoder_vx_i)
+            encoder_cols.append(str_encoder_omega_i)
+        encoders = self.data[encoder_cols].to_numpy()
+
         output = self.data[['gt_icp_x', 'gt_icp_y', 'gt_icp_z', 'gt_icp_roll', 'gt_icp_pitch', 'gt_icp_yaw']].to_numpy()
         calib_step = self.data['calib_step']
         # cmd_vx = self.data['cmd_vx']
@@ -37,12 +46,14 @@ class TorchWMRDataset(Dataset):
         icp_vy = self.data['icp_vy']
         icp_omega = self.data['icp_omega']
         steady_state_mask = self.data['steady_state_mask'] == 1
-        calib_mask = self.data['calib_mask'] == 1
+        transitory_state_mask = self.data['transitory_state_mask'] == 1
+        # calib_mask = self.data['calib_mask'] == 1
 
 
         self.x_train = torch.tensor(input)
         self.y_train = torch.tensor(output)
         self.calib_step = torch.tensor(calib_step)
+        self.encoders = torch.tensor(encoders)
         # self.cmd_vx = torch.tensor(cmd_vx)
         # self.cmd_omega = torch.tensor(cmd_omega)
         # self.encoder_vx = torch.tensor(encoder_vx)
@@ -51,15 +62,15 @@ class TorchWMRDataset(Dataset):
         self.icp_vy = torch.tensor(icp_vy)
         self.icp_omega = torch.tensor(icp_omega)
         self.steady_state_mask = torch.tensor(steady_state_mask)
-        self.calib_mask = torch.tensor(calib_mask)
+        self.transitory_state_mask = torch.tensor(transitory_state_mask)
+        # self.calib_mask = torch.tensor(calib_mask)
 
     def __len__(self):
         return len(self.y_train)
 
     def __getitem__(self, idx):
-        return self.x_train[idx], self.y_train[idx], self.calib_step[idx],  self.icp_vx[idx], self.icp_vy[idx], \
-            self.icp_omega[idx], self.steady_state_mask[idx], self.calib_mask[idx]
-
+        return self.x_train[idx], self.y_train[idx], self.calib_step[idx], self.encoders[idx],  self.icp_vx[idx], self.icp_vy[idx], \
+            self.icp_omega[idx], self.steady_state_mask[idx], self.transitory_state_mask[idx]
     def set_quadran_mask(self, quadran):
         new_calib_mask = np.full(self.__len__(), False)
         if quadran == 1:

@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 
 from util.util_func import *
+from util.transform_algebra import *
 from util.model_func import diff_drive
 from models.kinematic.ideal_diff_drive import Ideal_diff_drive
 
@@ -37,6 +38,7 @@ class DatasetParser:
             self.wheel_radius = 0.116
             self.baseline = 0.62
             self.training_horizon = 2
+            self.calib_step_time = 6
             self.rate = 0.05
 
         self.ideal_diff_drive = Ideal_diff_drive(self.wheel_radius, self.baseline, self.rate)
@@ -56,6 +58,7 @@ class DatasetParser:
         self.joy = self.joy == 'True'
         # self.good_calib_step = run['good_calib_step'].to_numpy()
         # self.good_calib_step = self.good_calib_step == 'True'
+        self.calib_step = run['calib_step'].to_numpy().astype('int')
 
         self.icp_x = run['icp_pos_x'].to_numpy().astype('float')  # icp x position (m)
         self.icp_y = run['icp_pos_y'].to_numpy().astype('float')  # icp y position (m)
@@ -122,6 +125,8 @@ class DatasetParser:
 
         self.icp_states = np.column_stack((self.timestamp, self.icp_id, self.icp_x, self.icp_y, self.icp_z, self.icp_euler))
         self.icp_states_2d = np.column_stack((self.timestamp, self.icp_id, self.icp_x, self.icp_y, self.icp_euler[:, 2]))
+
+        self.steady_or_transitory_window = []
 
     def create_calibration_step_array(self):
         self.calib_step = np.zeros(self.n_points)
@@ -231,59 +236,73 @@ class DatasetParser:
 
 
     def concatenate_into_full_dataframe(self):
+        cols = ['timestamp', 'imu_roll_vel', 'imu_pitch_vel', 'imu_yaw_vel', 'cmd_left', 'cmd_right',
+                'icp_x', 'icp_y', 'icp_z', 'icp_roll', 'icp_pitch', 'icp_yaw', 'icp_vx', 'icp_vy', 'icp_omega',
+                'encoder_wheel_left_vel', 'encoder_wheel_right_vel', 'diff_drive_vels_x', 'diff_drive_vels_y', 'diff_drive_vels_omega',
+                'calib_step']
         self.parsed_dataset = np.concatenate((self.timestamp.reshape(self.n_points, 1), self.imu_euler,
                                               self.cmd_wheel_vels,
                                               self.icp_states[:, 2:], self.icp_vels,
                                               self.wheel_left_vel.reshape(self.n_points, 1), self.wheel_right_vel.reshape(self.n_points, 1),
-                                              self.diff_drive_vels, self.calib_step.reshape(self.n_points, 1),
-                                              self.steady_state_mask.reshape(self.n_points, 1)), axis=1)
-        cols = ['timestamp', 'imu_roll_vel', 'imu_pitch_vel', 'imu_yaw_vel', 'cmd_left', 'cmd_right',
-                'icp_x', 'icp_y', 'icp_z', 'icp_roll', 'icp_pitch', 'icp_yaw', 'icp_vx', 'icp_vy', 'icp_omega',
-                'encoder_wheel_left_vel', 'encoder_wheel_right_vel', 'diff_drive_vels_x', 'diff_drive_vels_y', 'diff_drive_vels_omega',
-                'calib_step', 'steady_state_mask']
+                                              self.diff_drive_vels, self.calib_step.reshape(self.n_points, 1),), axis=1)
 
         self.parsed_dataset_df = pd.DataFrame(self.parsed_dataset, columns=cols)
 
-    # def find_training_horizons(self):
-    #     # self.parsed_dataset_steady_state = self.parsed_dataset[self.steady_state_mask]
-    #     self.parsed_dataset_steady_state = self.parsed_dataset
-    #     n_points_steady_state = self.parsed_dataset_steady_state.shape[0]
-    #
-    #
-    #     self.horizon_starts = []
-    #     self.horizon_ends = []
-    #
-    #     for i in range(1, n_points_steady_state):
-    #         if self.parsed_dataset_steady_state[i - 1, 20] != self.parsed_dataset_steady_state[i, 20]:
-    #             self.horizon_starts.append(i)
-    #             horizon_elapsed = 0
-    #             j = i
-    #             if self.parsed_dataset_steady_state[j, 20] == self.parsed_dataset_steady_state[-1, 20]:
-    #                 self.horizon_starts.pop()
-    #                 break
-    #             while self.parsed_dataset_steady_state[j + 1, 20] == self.parsed_dataset_steady_state[j, 20]:
-    #                 horizon_elapsed += (self.parsed_dataset[j + 1, 0] - self.parsed_dataset[j, 0])
-    #                 if horizon_elapsed >= 2.0:
-    #                     self.horizon_ends.append(j)
-    #                     self.horizon_starts.append(j + 1)
-    #                     horizon_elapsed = 0
-    #                 j += 1
-    #             self.horizon_starts.pop()
-
-    def find_all_calib_horizons(self):
+    def find_training_horizons(self):
+        # self.parsed_dataset_steady_state = self.parsed_dataset[self.steady_state_mask]
+        self.parsed_dataset_steady_state = self.parsed_dataset
+        n_points_steady_state = self.parsed_dataset_steady_state.shape[0]
         self.horizon_starts = []
-        self.horizon_starts.append(0)
         self.horizon_ends = []
-        horizon_elapsed = 0
-        for i in range(0 ,self.n_points-1):
-            horizon_elapsed += (self.parsed_dataset[i + 1, 0] - self.parsed_dataset[i, 0])
-            if horizon_elapsed >= self.training_horizon:
+
+        for i in range(1, self.n_points):
+            if self.calib_step[i] != self.calib_step[i-1]:
+                elapsed_time_step = 0
+                j = i-1
+                window_2_switch = True
+                window_3_switch = True
+                # if self.parsed_dataset_steady_state[j, 20] == self.parsed_dataset_steady_state[-1, 20]:
+                #     self.horizon_starts.pop()
+                #     break
+                #TODO: find all training horizons starting from calibration step ends
+                while elapsed_time_step <= self.calib_step_time:
+                    elapsed_time_step += self.timestamp[j+1] - self.timestamp[j]
+                    if elapsed_time_step >= 2.0 and window_3_switch:
+                        window_3_start = j
+                        window_3_switch = False
+                    if elapsed_time_step >= 4.0 and window_2_switch:
+                        window_2_start = j
+                        window_2_switch = False
+                    j -= 1
+                # append window 1 for valid step
+                self.steady_or_transitory_window.append('transitory')
+                self.horizon_starts.append(j)
+                self.horizon_ends.append(window_2_start - 1)
+                # append window 2 for valid step
+                self.steady_or_transitory_window.append('steady')
+                self.horizon_starts.append(window_2_start)
+                self.horizon_ends.append(window_3_start - 1)
+                # append window 3 for valid step
+                self.steady_or_transitory_window.append('steady')
+                self.horizon_starts.append(window_3_start)
                 self.horizon_ends.append(i)
-                self.horizon_starts.append(i+1)
-                horizon_elapsed = 0
-                pass
-        self.horizon_starts.pop()
+
         self.n_horizons = len(self.horizon_starts)
+
+    # def find_all_calib_horizons(self):
+    #     self.horizon_starts = []
+    #     self.horizon_starts.append(1)
+    #     self.horizon_ends = []
+    #     horizon_elapsed = 0
+    #     for i in range(1 ,self.n_points-1):
+    #         horizon_elapsed += (self.parsed_dataset[i + 1, 0] - self.parsed_dataset[i, 0])
+    #         if horizon_elapsed >= self.training_horizon and self.icp_id[i] != self.icp_id[i-1]:
+    #             self.horizon_ends.append(i)
+    #             self.horizon_starts.append(i+1)
+    #             horizon_elapsed = 0
+    #             pass
+    #     self.horizon_starts.pop()
+    #     self.n_horizons = len(self.horizon_starts)
 
         # steady_state_array = np.full(self.n_points, False)
         #
@@ -326,26 +345,42 @@ class DatasetParser:
                 self.calib_mask[i] = True
 
     def build_torch_ready_dataset(self):
+        init_state_tf = np.eye(4)
+        homogeonous_state_position = np.zeros(4)
+        homogeonous_state_position[3] = 1
         self.rate = 0.05
         timesteps_per_horizon = int(self.training_horizon / self.rate)
 
         torch_input_array = np.zeros((len(self.horizon_starts),
-                                      12 + timesteps_per_horizon * 4))  # [icp_x, icp_y, icp_yaw, vx0, vomega0, vx1, vomega1, vx2, vomega2, vx3, vomega3]
+                                      12 + timesteps_per_horizon * 4 + timesteps_per_horizon * 6))  # [icp_x, icp_y, icp_yaw, vx0, vomega0, vx1, vomega1, vx2, vomega2, vx3, vomega3]
         torch_output_array = np.zeros((len(self.horizon_starts), 6))  # [icp_x, icp_y, icp_yaw]
 
         for i in range(0, len(self.horizon_starts)):
+            # if i != 511:
+            #     continue
             horizon_start = self.horizon_starts[i]
             horizon_end = self.horizon_ends[i]
-            torch_input_array[i, :6] = self.parsed_dataset[horizon_start, 6:12]  # init_state
+            # torch_input_array[i, :6] = self.parsed_dataset[horizon_start, 6:12]  # init_state
+            euler_pose_to_transform(self.parsed_dataset[horizon_start, 9:12], self.parsed_dataset[horizon_start, 6:9], init_state_tf)
+            init_state_tf_inv = np.linalg.inv(init_state_tf)
+            torch_input_array[i, :6] = np.zeros(6)  # init_state set at 0
             torch_input_array[i, 6] = self.parsed_dataset[horizon_start, 20]  # calib_step
             # torch_input_array[i, 7] = self.parsed_dataset[horizon_start, 4]  # cmd_vx
             # torch_input_array[i, 8] = self.parsed_dataset[horizon_start, 5]  # cmd_omega
-            for j in range(0, timesteps_per_horizon):
+            for j in range(0, timesteps_per_horizon): # adding wheel commands
                 torch_input_array[i, 7 + j * 2] = self.parsed_dataset[horizon_start + j, 4]
                 torch_input_array[i, 7 + j * 2 + 1] = self.parsed_dataset[horizon_start + j, 5]
-            for j in range(0, timesteps_per_horizon):
+            for j in range(0, timesteps_per_horizon): # adding wheel encoder measurements
                 torch_input_array[i, 87 + j * 2] = self.parsed_dataset[horizon_start + j, 15]
                 torch_input_array[i, 87 + j * 2 + 1] = self.parsed_dataset[horizon_start + j, 16]
+            for j in range(0, timesteps_per_horizon): # adding intermediary icp measurements
+                homogeonous_state_position[:3] = self.parsed_dataset[horizon_start + j, 6:9]
+                init_state_transformed_pose = init_state_tf_inv @ homogeonous_state_position
+                torch_input_array[i, 167 + j * 6:167 + j * 6 + 3] = init_state_transformed_pose[:3]
+                torch_input_array[i, 167 + 3 + j * 6:167 + 6 + j * 6] = self.parsed_dataset[horizon_start + j, 9:12] - self.parsed_dataset[horizon_start, 9:12]
+                torch_input_array[i, 3] = wrap2pi(torch_input_array[i, 3])
+                torch_input_array[i, 4] = wrap2pi(torch_input_array[i, 4])
+                torch_input_array[i, 5] = wrap2pi(torch_input_array[i, 5])
             # if torch_input_array[i, 8] <= 0:  # and torch_input_array[i, 8] <= 0:
             #     torch_input_array[i, 9] = 0
             # else:
@@ -354,14 +389,28 @@ class DatasetParser:
             # torch_input_array[i, 9] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 17])  # encoder_vx
             # torch_input_array[i, 10] = np.mean(
             #     self.parsed_dataset[horizon_start:horizon_end, 19])  # encoder_omega
-            torch_input_array[i, 167] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 12])  # icp_vx
-            torch_input_array[i, 168] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 13])  # icp_vy
-            torch_input_array[i, 169] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 14])  # icp_omega
+            torch_input_array[i, 407] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 12])  # icp_vx
+            torch_input_array[i, 408] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 13])  # icp_vy
+            torch_input_array[i, 409] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 14])  # icp_omega
             # torch_input_array[i, 170] = self.parsed_dataset[horizon_start, 21]  # steady_state_mask
-            torch_input_array[i, 170] = self.steady_state_horizons_list[i]  # steady_state_mask
-            torch_input_array[i, 171] = self.calib_mask[horizon_start]  # calib_mask
 
-            torch_output_array[i, :] = self.parsed_dataset[horizon_end, 6:12]
+            if self.steady_or_transitory_window[i] == 'steady':
+                torch_input_array[i, 410] = True  # steady_state_mask
+            else:
+                torch_input_array[i, 410] = False  # steady_state_mask
+            if self.steady_or_transitory_window[i] == 'transitory':
+                torch_input_array[i, 411] = True  # transitory_mask
+            else:
+                torch_input_array[i, 411] = False  # transitory_mask
+
+            # torch_output_array[i, :] = self.parsed_dataset[horizon_end, 6:12] # absolute final pose
+            homogeonous_state_position[:3] = self.parsed_dataset[horizon_end, 6:9]
+            output_state_transformed_pose = init_state_tf_inv @ homogeonous_state_position
+            torch_output_array[i, :3] = output_state_transformed_pose[:3]
+            torch_output_array[i, 3:] = self.parsed_dataset[horizon_end, 9:12] - self.parsed_dataset[horizon_start, 9:12] # relative final pose
+            torch_output_array[i, 3] = wrap2pi(torch_output_array[i, 3])
+            torch_output_array[i, 4] = wrap2pi(torch_output_array[i, 4])
+            torch_output_array[i, 5] = wrap2pi(torch_output_array[i, 5])
 
         torch_array = np.concatenate((torch_input_array, torch_output_array), axis=1)
 
@@ -379,13 +428,26 @@ class DatasetParser:
             str_encoder_right_i = 'right_wheel_vel_' + str(i)
             cols.append(str_encoder_left_i)
             cols.append(str_encoder_right_i)
+        for i in range(0, timesteps_per_horizon):
+            str_icp_x_i = 'icp_x_' + str(i)
+            str_icp_y_i = 'icp_y_' + str(i)
+            str_icp_z_i = 'icp_z_' + str(i)
+            str_icp_roll_i = 'icp_roll_' + str(i)
+            str_icp_pitch_i = 'icp_pitch_' + str(i)
+            str_icp_yaw_i = 'icp_yaw_' + str(i)
+            cols.append(str_icp_x_i)
+            cols.append(str_icp_y_i)
+            cols.append(str_icp_z_i)
+            cols.append(str_icp_roll_i)
+            cols.append(str_icp_pitch_i)
+            cols.append(str_icp_yaw_i)
         # cols.append('encoder_vx')
         # cols.append('encoder_omega')
         cols.append('icp_vx')
         cols.append('icp_vy')
         cols.append('icp_omega')
         cols.append('steady_state_mask')
-        cols.append('calib_mask')
+        cols.append('transitory_state_mask')
         cols.append('gt_icp_x')
         cols.append('gt_icp_y')
         cols.append('gt_icp_z')
@@ -397,15 +459,15 @@ class DatasetParser:
 
     def process_data(self, max_lin_vel, min_lin_vel, max_ang_vel, min_ang_vel):
         self.extract_values_from_dataset()
-        self.create_calibration_step_array()
+        # self.create_calibration_step_array()
         if self.robot == 'husky':
             self.compute_wheel_vels()
         self.compute_diff_drive_body_vels()
         self.compute_icp_based_velocity()
-        self.create_steady_state_mask()
+        # self.create_steady_state_mask()
         self.concatenate_into_full_dataframe()
-        # self.find_training_horizons()
-        self.find_all_calib_horizons()
+        self.find_training_horizons()
+        # self.find_all_calib_horizons()
         self.define_steady_state_horizons()
         self.define_calib_quadrans_mask(max_lin_vel, min_lin_vel, max_ang_vel, min_ang_vel)
         self.build_torch_ready_dataset()

@@ -84,3 +84,15 @@ def rigid_tranformation(params):
                      [np.sin(params[2]), np.cos(params[2]), params[1]],
                      [0, 0, 1]])
 
+def vectorize_symmetric_mat(mat):
+    return np.array([mat[0,0], mat[0,1], mat[0,2], mat[1,1], mat[1,2], mat[2,2]])
+
+def generate_measurement_covariance(prediction_covariance):
+    measurement_covariance = np.zeros((6,6))
+    I_vector = np.array([1,1,1,2,2,3]) - 1
+    J_vector = np.array([1,2,3,2,3,3]) - 1
+    for i in range(0, 6):
+        for j in range(0, 6):
+            measurement_covariance[i,j] = prediction_covariance[I_vector[i], I_vector[j]] * prediction_covariance[J_vector[i], J_vector[j]] + \
+                                          prediction_covariance[I_vector[i], J_vector[j]] * prediction_covariance[J_vector[i], I_vector[j]]
+    return measurement_covariance

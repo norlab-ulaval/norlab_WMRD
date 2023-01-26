@@ -57,6 +57,8 @@ class Ideal_diff_drive:
         self.body_vel_world_3d[:2] = self.body_vel_world_2d[:2]
         self.body_vel_world_3d[-1] = self.body_vel_world_2d[-1]
 
+        # print(self.body_vel_world_3d)
+
         return init_state + self.body_vel_world_3d * self.dt
 
     def adjust_motion_params(self, params):
