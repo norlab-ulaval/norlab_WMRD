@@ -209,7 +209,9 @@ class SlipDatasetParser:
         self.compute_body_vel_disturptions()
 
         new_data_array = np.concatenate((self.transitory_left_vels_array, self.transitory_right_vels_array,
+                                         self.idd_body_vels_x_array, self.idd_body_vels_y_array, self.idd_body_vels_yaw_array,
                                               self.icp_x_interpolated_array, self.icp_y_interpolated_array, self.icp_yaw_interpolated_array,
+                                              self.icp_x_single_step_vels_array, self.icp_y_single_step_vels_array, self.icp_yaw_single_step_vels_array,
                                               self.body_vel_disturption_x_array, self.body_vel_disturption_y_array, self.body_vel_disturption_yaw_array),
                                              axis=1)
 
@@ -225,6 +227,20 @@ class SlipDatasetParser:
         new_cols.extend(str_transitory_vel_left_list)
         new_cols.extend(str_transitory_vel_right_list)
 
+        str_idd_vel_x_list = []
+        str_idd_vel_y_list = []
+        str_idd_vel_yaw_list = []
+        for i in range(0, 40):
+            str_idd_vel_x_i = 'idd_vel_x_' + str(i)
+            str_idd_vel_y_i = 'idd_vel_y_' + str(i)
+            str_idd_vel_yaw_i = 'idd_vel_yaw_' + str(i)
+            str_idd_vel_x_list.append(str_idd_vel_x_i)
+            str_idd_vel_y_list.append(str_idd_vel_y_i)
+            str_idd_vel_yaw_list.append(str_idd_vel_yaw_i)
+        new_cols.extend(str_idd_vel_x_list)
+        new_cols.extend(str_idd_vel_y_list)
+        new_cols.extend(str_idd_vel_yaw_list)
+
         str_icp_interpolated_x_list = []
         str_icp_interpolated_y_list = []
         str_icp_interpolated_yaw_list = []
@@ -238,6 +254,20 @@ class SlipDatasetParser:
         new_cols.extend(str_icp_interpolated_x_list)
         new_cols.extend(str_icp_interpolated_y_list)
         new_cols.extend(str_icp_interpolated_yaw_list)
+
+        str_icp_vel_x_list = []
+        str_icp_vel_y_list = []
+        str_icp_vel_yaw_list = []
+        for i in range(0, 40):
+            str_icp_vel_x_i = 'icp_vel_x_' + str(i)
+            str_icp_vel_y_i = 'icp_vel_y_' + str(i)
+            str_icp_vel_yaw_i = 'icp_vel_yaw_' + str(i)
+            str_icp_vel_x_list.append(str_icp_vel_x_i)
+            str_icp_vel_y_list.append(str_icp_vel_y_i)
+            str_icp_vel_yaw_list.append(str_icp_vel_yaw_i)
+        new_cols.extend(str_icp_vel_x_list)
+        new_cols.extend(str_icp_vel_y_list)
+        new_cols.extend(str_icp_vel_yaw_list)
 
         str_body_vel_disturption_x_list = []
         str_body_vel_disturption_y_list = []

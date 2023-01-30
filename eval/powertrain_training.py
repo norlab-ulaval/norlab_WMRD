@@ -28,7 +28,7 @@ params = {'batch_size': 64,
           'num_workers': 6}
 max_epochs = 100
 
-train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/grand_salon_20_01_b/torch_dataset_all.pkl'
+train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/ga_hard_snow_25_01_b/torch_dataset_all.pkl'
 # train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/vel_mask_array_all.npy'
 training_horizon = 2 # seconds
 timestep = 0.05 # seconds
@@ -51,8 +51,8 @@ bounded_powertrain = Bounded_powertrain(min_wheel_vel, max_wheel_vel, time_const
 init_params = [0.5, 0.05]
 bounds = [(0.0, 1.0), (0.0, 1.0)]
 method = 'Nelder-Mead'
-trained_params_path = 'training_results/marmotte/powertrain/grand_salon_b/powertrain_training_right.npy'
+trained_params_path = 'training_results/marmotte/powertrain/ga_hard_snow_b/powertrain_training_left.npy'
 
 powertrain_trainer = Powertrain_Trainer(powertrain_model=bounded_powertrain, init_params=init_params, dataloader=wmr_train_dl,
-                              timesteps_per_horizon=timesteps_per_horizon, wheel_side='right', dt=0.05)
+                              timesteps_per_horizon=timesteps_per_horizon, wheel_side='left', dt=0.05)
 powertrain_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)

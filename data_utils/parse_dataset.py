@@ -6,9 +6,9 @@ import pandas as pd
 from data_utils.dataset_parser import DatasetParser
 
 # raw_dataset_path = '/media/dominic/462D-1EE8/rosbags/doughnut_calibs/warthog/depot_1/extracted_data/data.pkl'
-raw_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/grand_salon_20_01_b/grand_salon_01_20_b_data_raw.pkl'
+raw_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/ga_hard_snow_25_01_b/ga_hard_snow_25_01_data_raw_b.pkl'
 # export_dataset_path = '/home/dominic/repos/norlab_WMRD/data/warthog_wheel/doughnut_datasets/depot_1/torch_dataset_all.pkl'
-export_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/grand_salon_20_01_b/torch_dataset_all.pkl'
+export_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/ga_hard_snow_25_01_b/torch_dataset_all.pkl'
 
 robot = 'marmotte'
 
