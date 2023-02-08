@@ -1,16 +1,38 @@
 # coding=utf-8
-from typing import Tuple
 
 import pandas as pd
 import numpy as np
 from dataclasses import fields as dc_fields
 from .data_containers import FeatureDataclass, StatePose, Cmd, Velocity
-from typing import Optional
+from typing import List, Callable, Type, Any
+
+
+def timestep_indexing_sanity_check(the_dataframe: pd.DataFrame, unindexed_column_label: str) -> bool:
+    column_labels: List[str] = the_dataframe.columns.to_list()
+    col_index = [int(each_label.strip(unindexed_column_label)) for each_label in column_labels]
+    col_index_ar = np.array(col_index)
+    np_diff = np.diff(col_index_ar)
+
+    index_is_monoticaly_increasing = np.all(np_diff > 0)
+
+    column_nb = the_dataframe.shape[1]
+    index_start = col_index_ar[0]
+    if index_start == 0:
+        index_start = -1
+    index_end = col_index_ar[-1]
+    delta = index_end - index_start
+    index_has_constant_increment = column_nb == delta
+
+    is_timestep_index_good_to_go = all((index_is_monoticaly_increasing, index_has_constant_increment))
+    if not is_timestep_index_good_to_go:
+        raise IndexError(f"(!) The timestep index is either missing a step or not monotonicaly increassing")
+
+    return is_timestep_index_good_to_go
 
 
 def extract_dataframe_feature(dataset: pd.DataFrame,
                               feature_name: str,
-                              data_container_type: FeatureDataclass) -> FeatureDataclass:
+                              data_container_type: Type[FeatureDataclass]) -> FeatureDataclass:
     """ Dataframe feature extractor automation function.
 
     Usage:
@@ -29,26 +51,42 @@ def extract_dataframe_feature(dataset: pd.DataFrame,
     """
 
     try:
-        df_features = dataset.filter(like=feature_name)
-        assert not df_features.empty
-    except AssertionError as e:
-        raise ValueError(f"(!) The parameter `{feature_name}` does not exist in `dataset` as a column header prefix")
-
-    container_properties = dc_fields(data_container_type)[1:]  # Remove 'feature_name'
-    _tmp_container = { each_field.name: None for each_field in container_properties }
-
-    for each_property in data_container_type.get_dimension_names():
+        if not issubclass(data_container_type, FeatureDataclass):
+            raise ValueError(f"(!) `{data_container_type}` must be a subclass of `FeatureDataclass`")
+    except TypeError as e:
+        raise AttributeError(
+                f"(!) `{data_container_type}` must not be instanciated, just pass the class as attribute.")
+    else:
         try:
-            _df_header_field = f"{feature_name}_{each_property}_"
-            df_property = df_features.filter(regex=f"{_df_header_field}\\d+")
-            assert not df_property.empty
+            df_features = dataset.filter(like=feature_name)
+            if df_features.empty:
+                raise ValueError(
+                        f"(!) The parameter `{feature_name}` does not exist in `dataset` as a column header prefix")
 
-            _tmp_container[each_property] = df_property.to_numpy()
-        except AssertionError as e:
-            raise ValueError(
-                    f"(!) The column {_df_header_field} does not exist in `dataset`. Check that property `"
-                    f"{each_property}` in {str(data_container_type)} is a `{feature_name}` postfix in the dataset"
-                    )
+            container_properties = dc_fields(data_container_type)[1:]  # Remove 'feature_name'
+            tmp_container = { each_field.name: None for each_field in container_properties }
 
-    the_data_container_with_extracted_data = data_container_type(feature_name=feature_name, **_tmp_container)
-    return the_data_container_with_extracted_data
+            for each_property in data_container_type.get_dimension_names():
+                df_header_field = f"{feature_name}_{each_property}"
+                df_property = df_features.filter(regex=f"{df_header_field}_\\d+")
+                if df_property.empty:
+                    raise ValueError(
+                            f"(!) The column `{df_header_field}` does not exist in `dataset`. "
+                            f"Check that property `{each_property}` in {str(data_container_type)} is a "
+                            f"`{feature_name}` postfix in the dataset")
+
+                try:
+                    timestep_indexing_sanity_check(df_property, df_header_field)
+                except IndexError as e:
+                    raise ValueError(
+                            f"(!) There is a problem with the `dataset` column label `{df_header_field}_` timestep "
+                            f"index. "
+                            f"<< {e}")
+
+                tmp_container[each_property] = df_property.to_numpy()
+
+        except ValueError as e:
+            raise
+
+    # noinspection PyArgumentList
+    return data_container_type(feature_name=feature_name, **tmp_container)
