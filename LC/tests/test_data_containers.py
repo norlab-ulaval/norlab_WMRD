@@ -37,20 +37,20 @@ def setup_mock_data_uneven() -> MockDataContainer:
 class TestFeature:
 
     @dataclass
-    class MockFeatureChild(dcu.FeatureDataclass):
+    class MockFeatureChild(dcu.AbstractFeatureDataclass):
         aa: np.ndarray
         bb: np.ndarray
         cc: np.ndarray
-
-        @property
-        def _registred_ref_ndarray(self):
-            return self.aa
 
 
     @pytest.fixture
     def setup_mock_feature_child(self, setup_mock_data):
         return self.MockFeatureChild(feature_name=setup_mock_data.name,
                                      aa=setup_mock_data.a, bb=setup_mock_data.b, cc=setup_mock_data.c)
+
+    def test_FeatureDataclass_baseclass_not_instantiable(self):
+        with pytest.raises(TypeError):
+            shouldfail = dcu.AbstractFeatureDataclass(feature_name='try_to_do_it')
 
     def test_class_feature_post_init_base(self, setup_mock_feature_child, setup_mock_data):
         mfc = setup_mock_feature_child

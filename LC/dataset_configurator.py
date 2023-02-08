@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 from dataclasses import fields as dc_fields
-from .data_containers import FeatureDataclass, StatePose, Cmd, Velocity
+from .data_containers import AbstractFeatureDataclass, StatePose, Cmd, Velocity
 from typing import List, Callable, Type, Any
 
 
@@ -32,7 +32,7 @@ def timestep_indexing_sanity_check(the_dataframe: pd.DataFrame, unindexed_column
 
 def extract_dataframe_feature(dataset: pd.DataFrame,
                               feature_name: str,
-                              data_container_type: Type[FeatureDataclass]) -> FeatureDataclass:
+                              data_container_type: Type[AbstractFeatureDataclass]) -> AbstractFeatureDataclass:
     """ Dataframe feature extractor automation function.
 
     Usage:
@@ -51,8 +51,8 @@ def extract_dataframe_feature(dataset: pd.DataFrame,
     """
 
     try:
-        if not issubclass(data_container_type, FeatureDataclass):
-            raise ValueError(f"(!) `{data_container_type}` must be a subclass of `FeatureDataclass`")
+        if not issubclass(data_container_type, AbstractFeatureDataclass):
+            raise ValueError(f"(!) `{data_container_type}` must be a subclass of `AbstractFeatureDataclass`")
     except TypeError as e:
         raise AttributeError(
                 f"(!) `{data_container_type}` must not be instanciated, just pass the class as attribute.")
