@@ -1,19 +1,11 @@
 # coding=utf-8
 
-import numpy as np
-from LC import dataset_config_util as dcu
 import pytest
+import numpy as np
 import pandas as pd
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict, astuple, field, fields
 
-import os
-
-
-@pytest.fixture(scope="class")
-def setup_dataset():
-    _dataset: pd.DataFrame = pd.read_pickle(
-            '../../data/marmotte/ga_hard_snow_25_01_a/slip_dataset_all.pkl')
-    return _dataset
+from LC import data_containers as dcu
 
 
 
@@ -37,7 +29,7 @@ def setup_mock_data() -> MockData:
 class TestFeature:
 
     @dataclass
-    class MockDataClass(dcu.Feature):
+    class MockDataclass(dcu.FeatureDataclass):
         x: np.ndarray
 
         @property
@@ -47,15 +39,20 @@ class TestFeature:
 
     @pytest.fixture
     def setup_mock_dataclass(self, setup_mock_data):
-        return self.MockDataClass(feature_name=setup_mock_data.name, x=setup_mock_data.a)
+        return self.MockDataclass(feature_name=setup_mock_data.name, x=setup_mock_data.a)
 
     def test_class_feature_init(self, setup_mock_dataclass):
         assert type(setup_mock_dataclass.x) is np.ndarray
 
     def test_get_dimension_names(self, setup_mock_dataclass, setup_mock_data):
         mdc = setup_mock_dataclass
-        assert 'feature_name' in mdc.get_dimension_names()
+        assert 'feature_name' not in mdc.get_dimension_names()
+        assert mdc.feature_name is setup_mock_data.name
         assert 'x' in mdc.get_dimension_names()
+
+    def test_get_dimension_names_on_uninstiated_class(self):
+        stp = dcu.StatePose
+        stp.get_dimension_names()
 
     def test_get_sample_size(self, setup_mock_dataclass, setup_mock_data):
         mdc = setup_mock_dataclass
@@ -68,9 +65,15 @@ class TestFeature:
 
 class TestStatePose:
 
+    def test_init_empty_data_properties(self, setup_mock_data):
+        md = setup_mock_data
+        with pytest.raises(TypeError):
+            sp = dcu.StatePose(feature_name=md.name)
+
     def test_init(self, setup_mock_data):
         md = setup_mock_data
-        sp = dcu.StatePose(feature_name=md.name, x=md.a, y=md.b, theta=md.c)
+        sp = dcu.StatePose(feature_name=md.name, x=md.a, y=md.b, yaw=md.c)
+
 
 class TestCmdAndVelocity:
 
@@ -83,5 +86,3 @@ class TestCmdAndVelocity:
         vel = dcu.Velocity(feature_name=md.name, linear_vel=md.a, angular_vel=md.b)
 
         assert isinstance(vel, dcu.Velocity)
-
-
