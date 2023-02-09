@@ -32,24 +32,42 @@ class TestTimestepIndexingSanityCheck:
     def test_base_case_pass(self, setup_dataframe_monotonic_col_label):
         tisc = dc.timestep_indexing_sanity_check(the_dataframe=setup_dataframe_monotonic_col_label(),
                                                  unindexed_column_label=self.col_label)
-        assert tisc is True
+        assert type(tisc) is np.ndarray
 
     def test_index_start_non_zero(self, setup_dataframe_monotonic_col_label):
         with pytest.raises(IndexError):
             tisc = dc.timestep_indexing_sanity_check(the_dataframe=setup_dataframe_monotonic_col_label(start_index=2),
                                                      unindexed_column_label=self.col_label)
-            assert tisc is True
+
+    def test_missing_step(self, setup_dataframe_monotonic_col_label):
+        with pytest.raises(IndexError):
+            df_missing = setup_dataframe_monotonic_col_label().drop(f"{self.col_label}9", axis=1)
+            tisc = dc.timestep_indexing_sanity_check(the_dataframe=df_missing,
+                                                     unindexed_column_label=self.col_label)
 
 
 class TestExtractDataframeFeature:
 
-    def test_working(self, setup_dataset):
+    def test_StatePose_working(self, setup_dataset):
         fn = 'body_vel_disturption'
+        check_property = 'x'
 
         container = dc.extract_dataframe_feature(dataset=setup_dataset, feature_name=fn,
                                                  data_container_type=dcu.StatePose)
 
-        df = setup_dataset.filter(like=f"{fn}_x")
+        df = setup_dataset.filter(like=f"{fn}_{check_property}")
+        assert container.feature_name is fn
+        assert container.get_sample_size() == df.shape[0]
+        assert container.get_trj_len() == df.shape[1]
+
+    def test_CmdSkidSteer_working(self, setup_dataset):
+        fn = 'cmd'
+        check_property = 'left'
+
+        container = dc.extract_dataframe_feature(dataset=setup_dataset, feature_name=fn,
+                                                 data_container_type=dcu.CmdSkidSteer)
+
+        df = setup_dataset.filter(like=f"{fn}_{check_property}")
         assert container.feature_name is fn
         assert container.get_sample_size() == df.shape[0]
         assert container.get_trj_len() == df.shape[1]
@@ -58,7 +76,8 @@ class TestExtractDataframeFeature:
         fn = 'body_vel_disturption'
 
         mock_value = np.arange(10)
-        state_pose = dcu.StatePose(feature_name=fn, x=mock_value, y=mock_value, yaw=mock_value)
+        state_pose = dcu.StatePose(feature_name=fn, x=mock_value, y=mock_value, yaw=mock_value,
+                                   timestep_index=mock_value)
 
         with pytest.raises(AttributeError):
             container = dc.extract_dataframe_feature(dataset=setup_dataset, feature_name=fn,
@@ -72,7 +91,7 @@ class TestExtractDataframeFeature:
     def test_no_existing_feature_dimension(self, setup_dataset):
         with pytest.raises(ValueError):
             dc.extract_dataframe_feature(dataset=setup_dataset, feature_name='body_vel_disturption',
-                                         data_container_type=dcu.Cmd)
+                                         data_container_type=dcu.CmdStandard)
 
     def test_missing_timestep(self, setup_dataset):
         col_label = 'body_vel_disturption'

@@ -3,23 +3,30 @@
 import pandas as pd
 import numpy as np
 from dataclasses import fields as dc_fields
-from .data_containers import AbstractFeatureDataclass, StatePose, Cmd, Velocity
+from .data_containers import AbstractFeatureDataclass, StatePose, CmdStandard, Velocity
 from typing import List, Callable, Type, Any
 
 
-def timestep_indexing_sanity_check(the_dataframe: pd.DataFrame, unindexed_column_label: str) -> bool:
+def timestep_indexing_sanity_check(the_dataframe: pd.DataFrame, unindexed_column_label: str) -> np.ndarray:
+    """ Utility for validating timestep index in column label by checking if it is either missing a step or not
+    monotonicaly increassing.
+
+    :param the_dataframe:
+    :param unindexed_column_label:
+    :return: the timestep index as an numpy ndarray or raise a IndexError
+    """
     column_labels: List[str] = the_dataframe.columns.to_list()
     col_index = [int(each_label.strip(unindexed_column_label)) for each_label in column_labels]
-    col_index_ar = np.array(col_index)
-    np_diff = np.diff(col_index_ar)
+    timestep_index = np.array(col_index)
+    np_diff = np.diff(timestep_index)
 
     index_is_monoticaly_increasing = np.all(np_diff > 0)
 
     column_nb = the_dataframe.shape[1]
-    index_start = col_index_ar[0]
+    index_start = timestep_index[0]
     if index_start == 0:
         index_start = -1
-    index_end = col_index_ar[-1]
+    index_end = timestep_index[-1]
     delta = index_end - index_start
     index_has_constant_increment = column_nb == delta
 
@@ -27,7 +34,7 @@ def timestep_indexing_sanity_check(the_dataframe: pd.DataFrame, unindexed_column
     if not is_timestep_index_good_to_go:
         raise IndexError(f"(!) The timestep index is either missing a step or not monotonicaly increassing")
 
-    return is_timestep_index_good_to_go
+    return timestep_index
 
 
 def extract_dataframe_feature(dataset: pd.DataFrame,
@@ -66,6 +73,7 @@ def extract_dataframe_feature(dataset: pd.DataFrame,
             container_properties = dc_fields(data_container_type)[1:]  # Remove 'feature_name'
             tmp_container = { each_field.name: None for each_field in container_properties }
 
+            timestep_index = None
             for each_property in data_container_type.get_dimension_names():
                 df_header_field = f"{feature_name}_{each_property}"
                 df_property = df_features.filter(regex=f"{df_header_field}_\\d+")
@@ -76,7 +84,9 @@ def extract_dataframe_feature(dataset: pd.DataFrame,
                             f"`{feature_name}` postfix in the dataset")
 
                 try:
-                    timestep_indexing_sanity_check(df_property, df_header_field)
+                    timestep_index = timestep_indexing_sanity_check(df_property, df_header_field)
+                    if tmp_container['timestep_index'] is None:
+                        tmp_container['timestep_index'] = timestep_index
                 except IndexError as e:
                     raise ValueError(
                             f"(!) There is a problem with the `dataset` column label `{df_header_field}_` timestep "

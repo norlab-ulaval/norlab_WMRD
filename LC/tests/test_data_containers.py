@@ -14,6 +14,7 @@ class MockDataContainer:
     a: np.ndarray
     b: np.ndarray
     c: np.ndarray
+    ts: np.ndarray
 
 
 @pytest.fixture(scope="class")
@@ -21,7 +22,8 @@ def setup_mock_data() -> MockDataContainer:
     return MockDataContainer(name='mock_data',
                              a=np.ones((10, 40)),
                              b=np.ones((10, 40)),
-                             c=np.ones((10, 40))
+                             c=np.ones((10, 40)),
+                             ts=np.arange(0, 40)
                              )
 
 
@@ -30,7 +32,8 @@ def setup_mock_data_uneven() -> MockDataContainer:
     return MockDataContainer(name='mock_data_uneven',
                              a=np.ones((10, 40)),
                              b=np.ones((10, 40)),
-                             c=np.ones((9, 39))
+                             c=np.ones((9, 39)),
+                             ts=np.arange(0, 40)
                              )
 
 
@@ -46,7 +49,7 @@ class TestFeature:
     @pytest.fixture
     def setup_mock_feature_child(self, setup_mock_data):
         return self.MockFeatureChild(feature_name=setup_mock_data.name,
-                                     aa=setup_mock_data.a, bb=setup_mock_data.b, cc=setup_mock_data.c)
+                                     aa=setup_mock_data.a, bb=setup_mock_data.b, cc=setup_mock_data.c, timestep_index=setup_mock_data.ts)
 
     def test_FeatureDataclass_baseclass_not_instantiable(self):
         with pytest.raises(TypeError):
@@ -60,7 +63,7 @@ class TestFeature:
     def test_class_feature_post_init_check(self, setup_mock_data_uneven):
         with pytest.raises(ValueError):
             mfc_u = self.MockFeatureChild(feature_name=setup_mock_data_uneven.name, aa=setup_mock_data_uneven.a,
-                                          bb=setup_mock_data_uneven.b, cc=setup_mock_data_uneven.c)
+                                          bb=setup_mock_data_uneven.b, cc=setup_mock_data_uneven.c, timestep_index=setup_mock_data_uneven.ts)
 
     def test_get_dimension_names(self, setup_mock_feature_child, setup_mock_data):
         mfc = setup_mock_feature_child
@@ -90,17 +93,17 @@ class TestStatePose:
 
     def test_init(self, setup_mock_data):
         md = setup_mock_data
-        sp = dcu.StatePose(feature_name=md.name, x=md.a, y=md.b, yaw=md.c)
+        sp = dcu.StatePose(feature_name=md.name, x=md.a, y=md.b, yaw=md.c, timestep_index=md.ts)
 
 
 class TestCmdAndVelocity:
 
     def test_Cmd_init(self, setup_mock_data):
         md = setup_mock_data
-        cmd = dcu.Cmd(feature_name=md.name, linear_vel=md.a, angular_vel=md.b)
+        cmd = dcu.CmdStandard(feature_name=md.name, linear_vel=md.a, angular_vel=md.b, timestep_index=md.ts)
 
     def test_Velocity_init(self, setup_mock_data):
         md = setup_mock_data
-        vel = dcu.Velocity(feature_name=md.name, linear_vel=md.a, angular_vel=md.b)
+        vel = dcu.Velocity(feature_name=md.name, linear_vel=md.a, angular_vel=md.b, timestep_index=md.ts)
 
         assert isinstance(vel, dcu.Velocity)
