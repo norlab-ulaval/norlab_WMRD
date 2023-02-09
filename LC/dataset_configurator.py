@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from dataclasses import fields as dc_fields
 from .data_containers import AbstractFeatureDataclass, StatePose, CmdStandard, Velocity
-from typing import List, Callable, Type, Any
+from typing import Callable, Type, Any
 
 
 def timestep_indexing_sanity_check(the_dataframe: pd.DataFrame, unindexed_column_label: str) -> np.ndarray:
@@ -13,9 +13,9 @@ def timestep_indexing_sanity_check(the_dataframe: pd.DataFrame, unindexed_column
 
     :param the_dataframe:
     :param unindexed_column_label:
-    :return: the timestep index as an numpy ndarray or raise a IndexError
+    :return: the timestep index as a numpy ndarray or raise a IndexError
     """
-    column_labels: List[str] = the_dataframe.columns.to_list()
+    column_labels: list[str] = the_dataframe.columns.to_list()
     col_index = [int(each_label.strip(unindexed_column_label)) for each_label in column_labels]
     timestep_index = np.array(col_index)
     np_diff = np.diff(timestep_index)

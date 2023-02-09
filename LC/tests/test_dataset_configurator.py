@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 from dataclasses import dataclass
 
-from LC import data_containers as dcu
-from LC import dataset_configurator as dc
+from LC import data_containers as dcer
+from LC import dataset_configurator as dcor
 
 
 @pytest.fixture(scope="function")
@@ -30,20 +30,20 @@ class TestTimestepIndexingSanityCheck:
         return _setup_dataframe_monotonic_col_label
 
     def test_base_case_pass(self, setup_dataframe_monotonic_col_label):
-        tisc = dc.timestep_indexing_sanity_check(the_dataframe=setup_dataframe_monotonic_col_label(),
-                                                 unindexed_column_label=self.col_label)
+        tisc = dcor.timestep_indexing_sanity_check(the_dataframe=setup_dataframe_monotonic_col_label(),
+                                                   unindexed_column_label=self.col_label)
         assert type(tisc) is np.ndarray
 
     def test_index_start_non_zero(self, setup_dataframe_monotonic_col_label):
         with pytest.raises(IndexError):
-            tisc = dc.timestep_indexing_sanity_check(the_dataframe=setup_dataframe_monotonic_col_label(start_index=2),
-                                                     unindexed_column_label=self.col_label)
+            tisc = dcor.timestep_indexing_sanity_check(the_dataframe=setup_dataframe_monotonic_col_label(start_index=2),
+                                                       unindexed_column_label=self.col_label)
 
     def test_missing_step(self, setup_dataframe_monotonic_col_label):
         with pytest.raises(IndexError):
             df_missing = setup_dataframe_monotonic_col_label().drop(f"{self.col_label}9", axis=1)
-            tisc = dc.timestep_indexing_sanity_check(the_dataframe=df_missing,
-                                                     unindexed_column_label=self.col_label)
+            tisc = dcor.timestep_indexing_sanity_check(the_dataframe=df_missing,
+                                                       unindexed_column_label=self.col_label)
 
 
 class TestExtractDataframeFeature:
@@ -52,8 +52,8 @@ class TestExtractDataframeFeature:
         fn = 'body_vel_disturption'
         check_property = 'x'
 
-        container = dc.extract_dataframe_feature(dataset=setup_dataset, feature_name=fn,
-                                                 data_container_type=dcu.StatePose)
+        container = dcor.extract_dataframe_feature(dataset=setup_dataset, feature_name=fn,
+                                                   data_container_type=dcer.StatePose)
 
         df = setup_dataset.filter(like=f"{fn}_{check_property}")
         assert container.feature_name is fn
@@ -64,8 +64,8 @@ class TestExtractDataframeFeature:
         fn = 'cmd'
         check_property = 'left'
 
-        container = dc.extract_dataframe_feature(dataset=setup_dataset, feature_name=fn,
-                                                 data_container_type=dcu.CmdSkidSteer)
+        container = dcor.extract_dataframe_feature(dataset=setup_dataset, feature_name=fn,
+                                                   data_container_type=dcer.CmdSkidSteer)
 
         df = setup_dataset.filter(like=f"{fn}_{check_property}")
         assert container.feature_name is fn
@@ -76,27 +76,27 @@ class TestExtractDataframeFeature:
         fn = 'body_vel_disturption'
 
         mock_value = np.arange(10)
-        state_pose = dcu.StatePose(feature_name=fn, x=mock_value, y=mock_value, yaw=mock_value,
-                                   timestep_index=mock_value)
+        state_pose = dcer.StatePose(feature_name=fn, x=mock_value, y=mock_value, yaw=mock_value,
+                                    timestep_index=mock_value)
 
         with pytest.raises(AttributeError):
-            container = dc.extract_dataframe_feature(dataset=setup_dataset, feature_name=fn,
-                                                     data_container_type=state_pose)
+            container = dcor.extract_dataframe_feature(dataset=setup_dataset, feature_name=fn,
+                                                       data_container_type=state_pose)
 
     def test_fail_no_existing_feature(self, setup_dataset):
         with pytest.raises(ValueError):
-            dc.extract_dataframe_feature(dataset=setup_dataset, feature_name='bodyy_vel_ddisturption',
-                                         data_container_type=dcu.StatePose)
+            dcor.extract_dataframe_feature(dataset=setup_dataset, feature_name='bodyy_vel_ddisturption',
+                                           data_container_type=dcer.StatePose)
 
     def test_no_existing_feature_dimension(self, setup_dataset):
         with pytest.raises(ValueError):
-            dc.extract_dataframe_feature(dataset=setup_dataset, feature_name='body_vel_disturption',
-                                         data_container_type=dcu.CmdStandard)
+            dcor.extract_dataframe_feature(dataset=setup_dataset, feature_name='body_vel_disturption',
+                                           data_container_type=dcer.CmdStandard)
 
     def test_missing_timestep(self, setup_dataset):
         col_label = 'body_vel_disturption'
         df_missing = setup_dataset.drop(f"{col_label}_x_9", axis=1)
 
         with pytest.raises(ValueError):
-            dc.extract_dataframe_feature(dataset=df_missing, feature_name=col_label,
-                                         data_container_type=dcu.StatePose)
+            dcor.extract_dataframe_feature(dataset=df_missing, feature_name=col_label,
+                                           data_container_type=dcer.StatePose)
