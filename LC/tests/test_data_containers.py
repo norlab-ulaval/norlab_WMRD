@@ -18,7 +18,7 @@ class MockDataContainer:
     ts: np.ndarray
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="function")
 def setup_mock_data() -> MockDataContainer:
     return MockDataContainer(name='mock_data',
                              a=np.ones((10, 40)),
@@ -28,7 +28,17 @@ def setup_mock_data() -> MockDataContainer:
                              )
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="function")
+def setup_mock_data_range() -> MockDataContainer:
+    return MockDataContainer(name='mock_data',
+                             a=np.arange(10 * 40).reshape((10, 40)),
+                             b=np.arange(10 * 40).reshape((10, 40)),
+                             c=np.arange(10 * 40).reshape((10, 40)),
+                             ts=np.arange(0, 40)
+                             )
+
+
+@pytest.fixture(scope="function")
 def setup_mock_data_uneven() -> MockDataContainer:
     return MockDataContainer(name='mock_data_uneven',
                              a=np.ones((10, 40)),
@@ -52,6 +62,12 @@ class TestFeature:
         return self.MockFeatureChild(feature_name=setup_mock_data.name,
                                      aa=setup_mock_data.a, bb=setup_mock_data.b, cc=setup_mock_data.c,
                                      timestep_index=setup_mock_data.ts)
+
+    @pytest.fixture
+    def setup_mock_feature_child_range(self, setup_mock_data_range):
+        return self.MockFeatureChild(feature_name=setup_mock_data_range.name,
+                                     aa=setup_mock_data_range.a, bb=setup_mock_data_range.b, cc=setup_mock_data_range.c,
+                                     timestep_index=setup_mock_data_range.ts)
 
     def test_FeatureDataclass_baseclass_not_instantiable(self):
         with pytest.raises(TypeError):
@@ -77,16 +93,32 @@ class TestFeature:
         assert ('aa', 'bb', 'cc') == mfc.get_dimension_names()
 
     def test_get_dimension_names_on_uninstiated_class(self):
-        stp = dcer.StatePose
+        stp = dcer.StatePose2D
         stp.get_dimension_names()
 
-    def test_get_sample_size(self, setup_mock_feature_child, setup_mock_data):
+    def test_shape(self, setup_mock_feature_child, setup_mock_data):
         mdc = setup_mock_feature_child
-        assert mdc.get_sample_size() == setup_mock_data.a.shape[0]
+        assert mdc.shape == setup_mock_data.a.shape
 
-    def test_get_trj_len(self, setup_mock_feature_child, setup_mock_data):
+    def test_sample_size(self, setup_mock_feature_child, setup_mock_data):
         mdc = setup_mock_feature_child
-        assert mdc.get_trj_len() == setup_mock_data.a.shape[1]
+        assert mdc.sample_size == setup_mock_data.a.shape[0]
+
+    def test_trajectory_len(self, setup_mock_feature_child, setup_mock_data):
+        mdc = setup_mock_feature_child
+        assert mdc.trajectory_len == setup_mock_data.a.shape[1]
+
+    def test_ravel_dimensions_in_place(self, setup_mock_feature_child_range, setup_mock_data_range):
+        mdc = setup_mock_feature_child_range
+        assert mdc.shape == setup_mock_data_range.a.shape
+        mdc.ravel_dimensions_in_place()
+        assert mdc.shape == (setup_mock_data_range.a.shape[0] * setup_mock_data_range.a.shape[1],)
+        mdc.aa
+        mdc.bb
+        mdc.cc
+        mdc.get_dimension_names()
+        print(mdc)
+        # (Priority) ToDo: implement test asserting a range
 
 
 class TestStatePose:
@@ -94,11 +126,12 @@ class TestStatePose:
     def test_init_empty_data_properties(self, setup_mock_data):
         md = setup_mock_data
         with pytest.raises(TypeError):
-            sp = dcer.StatePose(feature_name=md.name)
+            sp = dcer.StatePose2D(feature_name=md.name)
 
     def test_init(self, setup_mock_data):
         md = setup_mock_data
-        sp = dcer.StatePose(feature_name=md.name, x=md.a, y=md.b, yaw=md.c, timestep_index=md.ts)
+        sp = dcer.StatePose2D(feature_name=md.name, x=md.a, y=md.b, yaw=md.c, timestep_index=md.ts)
+        sp
 
 
 class TestCmdAndVelocity:
@@ -118,7 +151,7 @@ class TestfeatureDataclassFactory:
 
     @pytest.fixture
     def setup_config(self):
-        spec = dict(feature_name='mock_data', dimension_names=['xx', 'yy', 'yaww'])
+        spec = dict(feature_dataclass_type='new_feature_dataclass', dimension_names=['xx', 'yy', 'yaww'])
         return spec
 
     def test_spec_ok(self, setup_config):
@@ -127,12 +160,14 @@ class TestfeatureDataclassFactory:
     def test_bad_spec(self):
         with pytest.raises(KeyError):
             fdf1 = dcer.feature_dataclass_factory(
-                    specification=dict(feature_AAAA='mock_data', dimension_names=['xx', 'yy', 'yaww']))
+                    specification=dict(feature_AAAA='new_feature_dataclass', dimension_names=['xx', 'yy', 'yaww']))
             fdf2 = dcer.feature_dataclass_factory(
-                    specification=dict(feature_name='mock_data', dimension_AAAA=['xx', 'yy', 'yaww']))
+                    specification=dict(feature_dataclass_type='new_feature_dataclass',
+                                       dimension_AAAA=['xx', 'yy', 'yaww']))
         with pytest.raises(AttributeError):
             fdf3 = dcer.feature_dataclass_factory(
-                    specification=dict(feature_name='mock_data', dimension_names=['xx', 'yy', 999]))
+                    specification=dict(feature_dataclass_type='new_feature_dataclass',
+                                       dimension_names=['xx', 'yy', 999]))
 
     def test_output_ok(self, setup_config):
         mock_cls = dcer.feature_dataclass_factory(specification=setup_config)
@@ -149,4 +184,4 @@ class TestfeatureDataclassFactory:
         assert hasattr(mock_cls_instance, 'yy')
         assert hasattr(mock_cls_instance, 'yaww')
 
-        print('\n'*2, mock_cls_instance)
+        print('\n' * 2, mock_cls_instance)

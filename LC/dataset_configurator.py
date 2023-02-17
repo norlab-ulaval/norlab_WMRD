@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 from dataclasses import fields as dc_fields
-from .data_containers import AbstractFeatureDataclass, StatePose, CmdStandard, Velocity
+from .data_containers import AbstractFeatureDataclass, StatePose2D, CmdStandard, Velocity
 from typing import Callable, Type, Any
 
 

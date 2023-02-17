@@ -4,10 +4,11 @@ from dataclasses import dataclass, asdict, fields, make_dataclass
 import numpy as np
 from typing import Tuple, Type
 from abc import ABC
+from collections import namedtuple
 
 
 @dataclass()
-class AbstractFeatureDataclass(ABC):
+class AbstractFeatureDataclass():
     """ An abstract base dataclass for control related data manipulation
 
     - (nice to have) ToDo: Add option to use timestamp instead of timestep index
@@ -20,11 +21,23 @@ class AbstractFeatureDataclass(ABC):
         container_properties = fields(cls)[2:]  # Remove the 'feature_name' and `timestep_index` properties
         return tuple(each_field.name for each_field in container_properties)
 
-    def get_sample_size(self) -> int:
-        return self.__getattribute__(self.get_dimension_names()[0]).shape[0]
+    @property
+    def shape(self) -> tuple[int, int]:
+        return self.__getattribute__(self.get_dimension_names()[0]).shape
 
-    def get_trj_len(self) -> int:
-        return self.__getattribute__(self.get_dimension_names()[0]).shape[1]
+    @property
+    def trajectory_len(self) -> int:
+        return len(self.timestep_index)
+
+    @property
+    def sample_size(self) -> int:
+        return self.__getattribute__(self.get_dimension_names()[0]).size / self.trajectory_len
+
+    def ravel_dimensions_in_place(self) -> None:
+        for each_data_property in self.get_dimension_names():
+            ravel__copy = self.__getattribute__(each_data_property).ravel()
+            self.__setattr__(each_data_property, ravel__copy)
+        return None
 
     def post_init_callback(self):
         """ Overide methode to execute custom computation on feature dataclass """
@@ -56,25 +69,28 @@ class AbstractFeatureDataclass(ABC):
         return None
 
 
+FeatureSpecification = namedtuple('FeatureSpecification', ['feature_dataclass_type', 'dimension_names'])
+
+
 def feature_dataclass_factory(specification: dict[str, list[str, ...]]) -> Type[AbstractFeatureDataclass]:
     """ Factory to dynnamicaly create new `AbstractFeatureDataclass` subclass from dictionary specification.
 
     Usage example:
 
-    >>> spec_ = dict(feature_name='mock_data', dimension_names=['xx', 'yy', 'yaww'])
-    >>> new_cls = feature_dataclass_factory(specification=spec_)
-    >>> assert issubclass(new_cls, AbstractFeatureDataclass)
+    >>> spec_ = dict(feature_dataclass_type='my_new_feature_type', dimension_names=['xx', 'yy', 'yawww'])
+    >>> the_new_cls = feature_dataclass_factory(specification=spec_)
+    >>> assert issubclass(the_new_cls, AbstractFeatureDataclass)
     >>> # True
-    >>> assert isinstance(new_cls, AbstractFeatureDataclass)
+    >>> assert isinstance(the_new_cls, AbstractFeatureDataclass)
     >>> # False
 
-    :param specification: A dictionary with keys:value 'feature_name': str, 'dimension_names': list[str, ...]}
+    :param specification: A dictionary with keys:value 'feature_dataclass_type': str, 'dimension_names': list[str, ...]}
     :return: A new subclass of AbstractFeatureDataclass
     """
     try:
-        feature_name: str = specification['feature_name']
+        feature_dataclass_type: str = specification['feature_dataclass_type']
         dimension_names: Tuple[str, ...] = specification['dimension_names']
-        if (type(feature_name) is not str) or (type(dimension_names) is not list) or (
+        if (type(feature_dataclass_type) is not str) or (type(dimension_names) is not list) or (
                 any([type(name) is not str for name in dimension_names])):
             raise AttributeError
     except KeyError as e:
@@ -82,16 +98,16 @@ def feature_dataclass_factory(specification: dict[str, list[str, ...]]) -> Type[
                 f"(!) The key {e} is missing from the `specification` dictionary passed in argument.")
     except AttributeError as e:
         raise AttributeError(
-                f"(!) The `specification` dictionary must contain key 'feature_name' with value of type string and key "
-                f"`dimension_names` with value of type list of string. {e}")
+                f"(!) The `specification` dictionary must contain key 'feature_dataclass_type' with value of type "
+                f"string and key `dimension_names` with value of type list of string. {e}")
 
     properties_field = [(name, np.ndarray) for name in dimension_names]
 
-    return make_dataclass(feature_name, bases=(AbstractFeatureDataclass,), fields=properties_field)
+    return make_dataclass(feature_dataclass_type, bases=(AbstractFeatureDataclass,), fields=properties_field)
 
 
 @dataclass()
-class StatePose(AbstractFeatureDataclass):
+class StatePose2D(AbstractFeatureDataclass):
     x: np.ndarray
     y: np.ndarray
     yaw: np.ndarray
@@ -121,7 +137,7 @@ class VelocitySkidSteer(CmdSkidSteer):
 
 @dataclass()
 class DisturbanceQueryState:
-    state_pose_k: StatePose
+    state_pose_k: StatePose2D
     velocity_skid_steer_k_previous: VelocitySkidSteer
     cmd_skid_steer_k: CmdSkidSteer
     cmd_skid_steer_k_previous: CmdSkidSteer
