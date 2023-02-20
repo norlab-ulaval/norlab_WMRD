@@ -55,7 +55,7 @@ class Model_Evaluator:
         model_body_vels = np.zeros(3)
         model_body_vels_array = np.full((n_total_horizons, 3), None)
 
-        for i, (inputs, targets, step, icp_vx, icp_vy, icp_omega, steady_state_mask, calib_mask) in enumerate(self.dataloader):
+        for i, (inputs, targets, step, encoders, icp_vx, icp_vy, icp_omega, steady_state_mask, transitory_mask) in enumerate(self.dataloader):
             # print(inputs)
             # print(targets)
             prev_predicted_state = inputs[0, :6].numpy()
@@ -63,9 +63,9 @@ class Model_Evaluator:
             euler_pose_to_transform(predicted_state[3:], predicted_state[:3], self.body_to_world_tf)
             yaw_to_rotmat2d(self.body_to_world_rotmat, predicted_state[5])
             steady_state_mask_bool = steady_state_mask.numpy()
-            calib_mask_bool = calib_mask.numpy()
-            # if steady_state_mask_bool:
-            if True:
+            transitory_state_mask_bool = transitory_mask.numpy()
+            if steady_state_mask_bool:
+            # if True:
                 for j in range(0, self.timesteps_per_horizon):
                     input_id = 6 + j * 2
                     predicted_state = self.model.predict(predicted_state, inputs[0, input_id:input_id + 2].numpy())

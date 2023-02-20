@@ -17,8 +17,9 @@ class DatasetParser:
 
         if robot == 'husky':
             self.steady_state_step_len = 160
-            self.wheel_radius = 0.33 / 2
-            self.baseline = 0.55
+            self.wheel_radius = 0.1651
+            self.baseline = 0.512
+            self.calib_step_time = 6
             self.rate = 0.05
 
         if robot == 'warthog-wheel':
@@ -36,7 +37,7 @@ class DatasetParser:
         if robot == 'marmotte':
             self.steady_state_step_len = 140
             self.wheel_radius = 0.116
-            self.baseline = 0.62
+            self.baseline = 0.5927
             self.training_horizon = 2
             self.calib_step_time = 6
             self.rate = 0.05
@@ -71,8 +72,9 @@ class DatasetParser:
         self.calib_state = run['calib_state'].to_numpy().astype('str')
 
         if self.robot == 'husky':
-            self.wheel_pos_left = run['wheel_pos_left'].to_numpy().astype('float')
-            self.wheel_pos_right = run['wheel_pos_right'].to_numpy().astype('float')
+            self.wheel_left_vel = run['meas_left_vel'].to_numpy().astype('float')
+            self.wheel_right_vel = run['meas_right_vel'].to_numpy().astype('float')
+            self.wheel_vels = np.vstack((self.wheel_left_vel, self.wheel_right_vel)).T
 
         if self.robot == 'warthog-wheel' or self.robot == 'warthog-track':
             self.wheel_left_vel = run['meas_left_vel'].to_numpy().astype('float')
@@ -352,7 +354,7 @@ class DatasetParser:
         timesteps_per_horizon = int(self.training_horizon / self.rate)
 
         torch_input_array = np.zeros((len(self.horizon_starts),
-                                      12 + timesteps_per_horizon * 4 + timesteps_per_horizon * 6))  # [icp_x, icp_y, icp_yaw, vx0, vomega0, vx1, vomega1, vx2, vomega2, vx3, vomega3]
+                                      12 + timesteps_per_horizon * 4 + timesteps_per_horizon * 6 + timesteps_per_horizon))  # [icp_x, icp_y, icp_yaw, vx0, vomega0, vx1, vomega1, vx2, vomega2, vx3, vomega3]
         torch_output_array = np.zeros((len(self.horizon_starts), 6))  # [icp_x, icp_y, icp_yaw]
 
         for i in range(0, len(self.horizon_starts)):
@@ -381,6 +383,8 @@ class DatasetParser:
                 torch_input_array[i, 3] = wrap2pi(torch_input_array[i, 3])
                 torch_input_array[i, 4] = wrap2pi(torch_input_array[i, 4])
                 torch_input_array[i, 5] = wrap2pi(torch_input_array[i, 5])
+            for j in range(0, timesteps_per_horizon): # adding wheel commands
+                torch_input_array[i, 407 + j] = -self.parsed_dataset[horizon_start + j, 3] # imu yaw rate
             # if torch_input_array[i, 8] <= 0:  # and torch_input_array[i, 8] <= 0:
             #     torch_input_array[i, 9] = 0
             # else:
@@ -389,19 +393,19 @@ class DatasetParser:
             # torch_input_array[i, 9] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 17])  # encoder_vx
             # torch_input_array[i, 10] = np.mean(
             #     self.parsed_dataset[horizon_start:horizon_end, 19])  # encoder_omega
-            torch_input_array[i, 407] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 12])  # icp_vx
-            torch_input_array[i, 408] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 13])  # icp_vy
-            torch_input_array[i, 409] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 14])  # icp_omega
+            torch_input_array[i, 447] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 12])  # icp_vx
+            torch_input_array[i, 448] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 13])  # icp_vy
+            torch_input_array[i, 449] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 14])  # icp_omega
             # torch_input_array[i, 170] = self.parsed_dataset[horizon_start, 21]  # steady_state_mask
 
             if self.steady_or_transitory_window[i] == 'steady':
-                torch_input_array[i, 410] = True  # steady_state_mask
+                torch_input_array[i, 450] = True  # steady_state_mask
             else:
-                torch_input_array[i, 410] = False  # steady_state_mask
+                torch_input_array[i, 450] = False  # steady_state_mask
             if self.steady_or_transitory_window[i] == 'transitory':
-                torch_input_array[i, 411] = True  # transitory_mask
+                torch_input_array[i, 451] = True  # transitory_mask
             else:
-                torch_input_array[i, 411] = False  # transitory_mask
+                torch_input_array[i, 451] = False  # transitory_mask
 
             # torch_output_array[i, :] = self.parsed_dataset[horizon_end, 6:12] # absolute final pose
             homogeonous_state_position[:3] = self.parsed_dataset[horizon_end, 6:9]
@@ -441,6 +445,9 @@ class DatasetParser:
             cols.append(str_icp_roll_i)
             cols.append(str_icp_pitch_i)
             cols.append(str_icp_yaw_i)
+        for i in range(0, timesteps_per_horizon):
+            str_icp_x_i = 'imu_yaw_' + str(i)
+            cols.append(str_icp_x_i)
         # cols.append('encoder_vx')
         # cols.append('encoder_omega')
         cols.append('icp_vx')
@@ -460,8 +467,8 @@ class DatasetParser:
     def process_data(self, max_lin_vel, min_lin_vel, max_ang_vel, min_ang_vel):
         self.extract_values_from_dataset()
         # self.create_calibration_step_array()
-        if self.robot == 'husky':
-            self.compute_wheel_vels()
+        # if self.robot == 'husky':
+        #     self.compute_wheel_vels()
         self.compute_diff_drive_body_vels()
         self.compute_icp_based_velocity()
         # self.create_steady_state_mask()

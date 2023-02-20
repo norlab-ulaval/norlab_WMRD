@@ -38,7 +38,7 @@ class SlipDatasetParser:
         if robot == 'marmotte':
             self.steady_state_step_len = 140
             self.wheel_radius = 0.116
-            self.baseline = 0.62
+            self.baseline = 0.5927
             self.training_horizon = 2
             self.calib_step_time = 6
             self.rate = 0.05
@@ -55,19 +55,21 @@ class SlipDatasetParser:
 
         cmd_left_str_list = []
         cmd_right_str_list = []
-        transitory_left_str_list = []
-        transitory_right_str_list = []
+        encoder_left_str_list = []
+        encoder_right_str_list = []
         for i in range(0, 40):
             str_cmd_left_i = 'cmd_left_' + str(i)
             str_cmd_right_i = 'cmd_right_' + str(i)
-            str_trans_left_i = 'transitory_left_' + str(i)
-            str_trans_right_i = 'transitory_right_' + str(i)
+            str_trans_left_i = 'left_wheel_vel_' + str(i)
+            str_trans_right_i = 'right_wheel_vel_' + str(i)
             cmd_left_str_list.append(str_cmd_left_i)
             cmd_right_str_list.append(str_cmd_right_i)
-            transitory_left_str_list.append(str_trans_left_i)
-            transitory_right_str_list.append(str_trans_right_i)
+            encoder_left_str_list.append(str_trans_left_i)
+            encoder_right_str_list.append(str_trans_right_i)
         self.cmd_left_vels_array = self.data[cmd_left_str_list].to_numpy()
         self.cmd_right_vels_array = self.data[cmd_right_str_list].to_numpy()
+        self.encoder_left_vels_array = self.data[encoder_left_str_list].to_numpy()
+        self.encoder_right_vels_array = self.data[encoder_right_str_list].to_numpy()
 
         icp_x_str_list = []
         icp_y_str_list = []
@@ -95,6 +97,11 @@ class SlipDatasetParser:
         self.icp_pitch_array = self.data[icp_pitch_str_list].to_numpy()
         self.icp_yaw_array = self.data[icp_yaw_str_list].to_numpy()
 
+        imu_yaw_str_list = []
+        for i in range(0, 40):
+            str_imu_yaw_i = 'imu_yaw_' + str(i)
+            imu_yaw_str_list.append(str_imu_yaw_i)
+        self.imu_yaw_array = self.data[imu_yaw_str_list].to_numpy()
 
     def compute_transitory_vels(self):
         transitory_state_mask = self.data['transitory_state_mask'].to_numpy()
@@ -104,8 +111,8 @@ class SlipDatasetParser:
         self.transitory_right_vels_array[0, :] = self.cmd_right_vels_array[0, :]
         for i in range(1, self.n_horizons):
             if transitory_state_mask[i] == 1:
-                self.transitory_left_vels_array[i, 0] = self.cmd_left_vels_array[i-1, -1]
-                self.transitory_right_vels_array[i, 0] = self.cmd_right_vels_array[i-1, -1]
+                self.transitory_left_vels_array[i, 0] = self.encoder_left_vels_array[i-1, -1]
+                self.transitory_right_vels_array[i, 0] = self.encoder_right_vels_array[i-1, -1]
                 cmd_elapsed_time = 0
                 for j in range(1, self.cmd_right_vels_array.shape[1]):
                     self.transitory_left_vels_array[i, j] = self.bounded_powertrain_left.compute_bounded_wheel_vels(self.cmd_left_vels_array[i, j],
@@ -131,13 +138,30 @@ class SlipDatasetParser:
                 body_vel_array = self.ideal_diff_drive.compute_body_vel(input_array)
                 self.idd_body_vels_x_array[i,j] = body_vel_array[0]
                 self.idd_body_vels_yaw_array[i,j] = body_vel_array[1]
+
+    def unwrap_trajectory(self, trajectory):
+        unwrapped_trajectory = np.zeros(trajectory.shape[0])
+        unwrapped_trajectory[0] = trajectory[0]
+        for i in range(0, trajectory.shape[0]-1):
+            trajectory_displacement = trajectory[i+1] - trajectory[i]
+            unwrapped_trajectory[i + 1] = unwrapped_trajectory[i] + wrap2pi(trajectory_displacement)
+            # if trajectory_displacement > np.pi:
+            #     unwrapped_trajectory[i+1] = unwrapped_trajectory[i] + trajectory_displacement - np.pi
+            # elif trajectory_displacement < np.pi:
+            #     unwrapped_trajectory[i + 1] = unwrapped_trajectory[i] + trajectory_displacement + np.pi
+            # else:
+            #     unwrapped_trajectory[i+1] = unwrapped_trajectory[i] + trajectory_displacement
+
+        return(unwrapped_trajectory)
+
     def icp_traj_as_smoothed_spline(self, window_id):
         icp_x_spline = make_smoothing_spline(self.step_time_vector, self.icp_x_array[window_id, :])
         icp_y_spline = make_smoothing_spline(self.step_time_vector, self.icp_y_array[window_id, :])
         # icp_z_spline = make_smoothing_spline(self.step_time_vector, self.icp_z_array[window_id, :])
         # icp_roll_spline = make_smoothing_spline(self.step_time_vector, self.icp_roll_array[window_id, :])
         # icp_pitch_spline = make_smoothing_spline(self.step_time_vector, self.icp_pitch_array[window_id, :])
-        icp_yaw_spline = make_smoothing_spline(self.step_time_vector, self.icp_yaw_array[window_id, :])
+        # TODO : implement smoothing spline
+        icp_yaw_spline = make_smoothing_spline(self.step_time_vector, self.unwrap_trajectory(self.icp_yaw_array[window_id, :]))
 
         return np.array([icp_x_spline, icp_y_spline, icp_yaw_spline])
 
@@ -180,13 +204,18 @@ class SlipDatasetParser:
                 icp_current_position_body_2d = icp_world_to_body_rotmat_2d @ icp_current_position_world_2d
                 icp_current_pose_body_2d[:2, 0] = icp_current_position_body_2d[:2, 0]
                 icp_current_pose_body_2d[2, 0] = self.icp_yaw_interpolated_array[i, j]
-                icp_vel_body_2d = (icp_next_pose_body_2d - icp_current_pose_body_2d) / self.timestep
+                icp_disp_body_2d = icp_next_pose_body_2d - icp_current_pose_body_2d
+                # icp_disp_body_2d[2, 0] = wrap2pi(icp_disp_body_2d[2, 0])
+                icp_vel_body_2d = (icp_disp_body_2d) / self.timestep
                 self.icp_x_single_step_vels_array[i, j] = icp_vel_body_2d[0]
                 self.icp_y_single_step_vels_array[i, j] = icp_vel_body_2d[1]
-                self.icp_yaw_single_step_vels_array[i, j] = icp_vel_body_2d[2]
+                # self.icp_yaw_single_step_vels_array[i, j] = icp_vel_body_2d[2]
             self.icp_x_single_step_vels_array[i, -1] = self.icp_x_single_step_vels_array[i, -2]
             self.icp_y_single_step_vels_array[i, -1] = self.icp_y_single_step_vels_array[i, -2]
-            self.icp_yaw_single_step_vels_array[i, -1] = self.icp_yaw_single_step_vels_array[i, -2]
+            # self.icp_yaw_single_step_vels_array[i, -1] = self.icp_yaw_single_step_vels_array[i, -2]
+            self.icp_yaw_single_step_vels_array[i, :] = self.imu_yaw_array[i, :]
+
+            
 
 
     # TODO: compute body_vel_disturptions

@@ -31,7 +31,7 @@ params = {'batch_size': 64,
           'num_workers': 6}
 max_epochs = 100
 
-train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/grand_salon_20_01_a/torch_dataset_all.pkl'
+train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/ga_hard_snow_25_01_a/torch_dataset_all.pkl'
 # train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/vel_mask_array_all.npy'
 training_horizon = 2 # seconds
 timestep = 0.05 # seconds
@@ -94,7 +94,7 @@ if robot == 'marmotte':
     y_icr = 0.5
     y_icr_l = 0.5
     y_icr_r = -0.5
-    x_icr = 0.1
+    x_icr = 0.5
 
 # ICR_symmetrical
 icr_symmetrical = ICR_symmetrical(r, alpha, x_icr, dt)
@@ -104,30 +104,30 @@ bounds = [(0, 1.0), (-2.0, 2.0)]
 method = 'Nelder-Mead'
 
 # ICR asymmetrical
-# icr_asymmetrical = ICR_asymmetrical(r, alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r, dt)
-# args = (icr_asymmetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
-# init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
-# bounds = [(0, 1.5), (0, 1.5), (-5.0, 5.0), (0.001, 5.0), (-5.0, -0.001)]
-# method = 'Nelder-Mead'
+icr_asymmetrical = ICR_asymmetrical(r, alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r, dt)
+args = (icr_asymmetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
+init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
+bounds = [(0.5, 1.0), (0.5, 1.0), (-5.0, 5.0), (0.001, 5.0), (-5.0, -0.001)]
+method = 'Nelder-Mead'
 
 ## Enhanced kinematic
 ## Husky
 # body_inertia = 0.8336
 # body_mass = 70
 ## Marmotte
-body_inertia = 0.8336
-body_mass = 70
-init_params = [0.2, 0.2, 0.0, 0.0]
-init_stoch_params = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-enhanced_kinematic = Enhanced_kinematic(r, baseline, body_inertia, body_mass, init_params, init_stoch_params, dt)
-args = (enhanced_kinematic, wmr_train_dl, timesteps_per_horizon, prediction_weights)
-bounds = [(-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)]
+# body_inertia = 0.8336
+# body_mass = 70
+# init_params = [0.2, 0.2, 0.0, 0.0]
+# init_stoch_params = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+# enhanced_kinematic = Enhanced_kinematic(r, baseline, body_inertia, body_mass, init_params, init_stoch_params, dt)
+# args = (enhanced_kinematic, wmr_train_dl, timesteps_per_horizon, prediction_weights)
+# bounds = [(-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)]
 
-trained_params_path = 'training_results/marmotte/enhanced_kinematic/grand_salon_a/train_full_all_horizons.npy'
-individual_trained_params_array = 'training_results/marmotte/icr_symmetrical/grand_salon_a/train_individual_horizons.npy'
+trained_params_path = 'training_results/marmotte/icr_asymmetrical/ga_hard_snow_a/train_full_all_horizons.npy'
+# individual_trained_params_array = 'training_results/marmotte/icr_symmetrical/grand_salon_a/train_individual_horizons.npy'
 # velocity_skip_array = np.array([[5.0, -2.0], [5.0, -3.0], [5.0, -4.0]])
 # wmr_train_dataset.skip_steps_mask(velocity_skip_array)
-model_trainer = Model_Trainer(model=enhanced_kinematic, init_params=init_params, dataloader=wmr_train_dl,
+model_trainer = Model_Trainer(model=icr_asymmetrical, init_params=init_params, dataloader=wmr_train_dl,
                               timesteps_per_horizon=timesteps_per_horizon, prediction_weights=prediction_weights_2d)
 model_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)
 # model_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)

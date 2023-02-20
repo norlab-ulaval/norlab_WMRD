@@ -34,7 +34,7 @@ params = {'batch_size': 64,
           'num_workers': 6}
 max_epochs = 100
 
-train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/grand_salon_12_12_b/torch_dataset_all.pkl'
+train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/marmotte/ga_hard_snow_25_01_b/torch_dataset_all.pkl'
 training_horizon = 2 # seconds
 timestep = 0.05 # seconds
 timesteps_per_horizon = int(training_horizon / timestep)
@@ -104,29 +104,30 @@ init_params = [1.0, 0.5] # for icr
 bounds = [(0, 1.0), (-5.0, 5.0)]
 
 # ICR assymetrical
-# icr_asymmetrical = ICR_asymmetrical(r, alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r, dt)
-# args = (icr_asymmetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
-# init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
-# bounds = [(0, 1.5), (0, 1.5), (-5.0, 5.0), (0.0, 5.0), (-5.0, 0.0)]
-# method = 'Nelder-Mead'
+icr_asymmetrical = ICR_asymmetrical(r, alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r, dt)
+args = (icr_asymmetrical, wmr_train_dl, timesteps_per_horizon, prediction_weights)
+init_params = [alpha_l, alpha_r, x_icr, y_icr_l, y_icr_r] # for icr
+bounds = [(0, 1.5), (0, 1.5), (-5.0, 5.0), (0.0, 5.0), (-5.0, 0.0)]
+method = 'Nelder-Mead'
 
-trained_params_path = 'training_results/marmotte/enhanced_kinematic/grand_salon_a/train_full_all_horizons.npy'
+trained_params_path = 'training_results/marmotte/icr_asymmetrical/ga_hard_snow_a/train_full_all_horizons.npy'
 trained_params = np.load(trained_params_path)
 
 ## Enhanced kinematic
 body_inertia = 0.8336
 body_mass = 70
+init_stoch_params = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 init_params = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-enhanced_kinematic = Enhanced_kinematic(r, baseline, body_inertia, body_mass, init_params, dt)
+enhanced_kinematic = Enhanced_kinematic(r, baseline, body_inertia, body_mass, init_params, init_stoch_params, dt)
 args = (enhanced_kinematic, wmr_train_dl, timesteps_per_horizon, prediction_weights)
 
-model_evaluator = Model_Evaluator(model=ideal_diff_drive, params=trained_params, dataset=wmr_train_dataset, dataloader=wmr_train_dl,
+model_evaluator = Model_Evaluator(model=icr_asymmetrical, params=trained_params, dataset=wmr_train_dataset, dataloader=wmr_train_dl,
                                   timesteps_per_horizon=timesteps_per_horizon, prediction_weights=prediction_weights_2d)
 
 # prediction_error_array, body_commands_array, body_encoder_array, icp_vels_array, model_body_vels_array = \
 #     model_evaluator.compute_model_evaluation_metrics(trained_params)
 
-export_path = '../data/marmotte/eval_results/grand_salon_b/ideal_diff_drive_full_eval_metrics.pkl'
+export_path = '../data/marmotte/eval_results/ga_hard_snow_b/icr_asymmetrical_full_eval_metrics.pkl'
 
 model_evaluator.compute_then_export_prediction_error_metrics(trained_params, export_path)
