@@ -6,7 +6,7 @@ import pandas as pd
 from dataclasses import dataclass, asdict, astuple, field, fields
 from typing import Type
 
-from LC import data_containers as dcer
+from multifeature_aggregator import data_containers as dcer
 
 
 @dataclass()
@@ -151,23 +151,27 @@ class TestfeatureDataclassFactory:
 
     @pytest.fixture
     def setup_config(self):
-        spec = dict(feature_dataclass_type='new_feature_dataclass', dimension_names=['xx', 'yy', 'yaww'])
+        spec = dcer.FeatureSpecification(new_feature_dataclass_type='new_feature_dataclass',
+                                         dimension_names=('xx', 'yy', 'yaww'))
         return spec
 
     def test_spec_ok(self, setup_config):
         dcer.feature_dataclass_factory(specification=setup_config)
 
     def test_bad_spec(self):
-        with pytest.raises(KeyError):
-            fdf1 = dcer.feature_dataclass_factory(
-                    specification=dict(feature_AAAA='new_feature_dataclass', dimension_names=['xx', 'yy', 'yaww']))
-            fdf2 = dcer.feature_dataclass_factory(
-                    specification=dict(feature_dataclass_type='new_feature_dataclass',
-                                       dimension_AAAA=['xx', 'yy', 'yaww']))
         with pytest.raises(AttributeError):
             fdf3 = dcer.feature_dataclass_factory(
-                    specification=dict(feature_dataclass_type='new_feature_dataclass',
-                                       dimension_names=['xx', 'yy', 999]))
+                    specification=dcer.FeatureSpecification(new_feature_dataclass_type='new_feature_dataclass',
+                                                            dimension_names=('xx', 'yy', 999)))
+
+        # ToDo: assessment >> next bloc ↓↓ is not relevant for since refactoring to specification object as a dataclass
+        # with pytest.raises(KeyError):
+        #     fdf1 = dcer.feature_dataclass_factory(
+        #             specification=dcer.FeatureSpecification(feature_AAAA='new_feature_dataclass',
+        #                                                     dimension_names=('xx', 'yy', 'yaww')))
+        #     fdf2 = dcer.feature_dataclass_factory(
+        #             specification=dcer.FeatureSpecification(new_feature_dataclass_type='new_feature_dataclass',
+        #                                                     dimension_AAAA=('xx', 'yy', 'yaww')))
 
     def test_output_ok(self, setup_config):
         mock_cls = dcer.feature_dataclass_factory(specification=setup_config)
