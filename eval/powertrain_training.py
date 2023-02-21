@@ -37,6 +37,7 @@ timesteps_per_horizon = int(training_horizon / timestep)
 wmr_train_dataset = TorchWMRDataset(train_dataset_path, body_or_wheel_vel='wheel', training_horizon=training_horizon)
 wmr_train_dl = DataLoader(wmr_train_dataset)
 
+# robot = 'marmotte'
 robot = 'husky'
 if robot == 'marmotte':
     input_space_dataframe = pd.read_pickle('/home/dominic/repos/norlab_WMRD/data/marmotte/input_space/input_space_data.pkl')
@@ -48,20 +49,22 @@ if robot == 'marmotte':
     max_wheel_vel = 10
 
 if robot == 'husky':
-    # input_space_dataframe = pd.read_pickle('/home/dominic/repos/norlab_WMRD/data/marmotte/input_space/input_space_data.pkl')
+    input_space_dataframe = pd.read_pickle('/home/dominic/repos/norlab_WMRD/data/husky/input_space_data/input_space_data_ga.pkl')
     # r = input_space_dataframe['calibrated_radius [m]'].to_numpy()[0]
     # baseline = input_space_dataframe['calibrated baseline [m]'].to_numpy()[0]
-    # min_wheel_vel = input_space_dataframe['maximum_wheel_vel_negative [rad/s]'].to_numpy()[0]
-    min_wheel_vel = -5
-    # max_wheel_vel = input_space_dataframe['maximum_wheel_vel_positive [rad/s]'].to_numpy()[0]
-    max_wheel_vel = 5
+    r = 0.1651
+    baseline = 0.512
+    min_wheel_vel = input_space_dataframe['maximum_wheel_vel_negative [rad/s]'].to_numpy()[0]
+    # min_wheel_vel = -5
+    max_wheel_vel = input_space_dataframe['maximum_wheel_vel_positive [rad/s]'].to_numpy()[0]
+    # max_wheel_vel = 5
 
 bounded_powertrain = Bounded_powertrain(min_wheel_vel, max_wheel_vel, time_constant=0.5, time_delay=0.05, dt=0.05)
-init_params = [0.5, 0.05]
+init_params = [0.8, 0.05]
 bounds = [(0.0, 1.0), (0.0, 1.0)]
 method = 'Nelder-Mead'
-trained_params_path = 'training_results/husky/powertrain/grand_salon_a_inflated/powertrain_training_left.npy'
+trained_params_path = 'training_results/husky/powertrain/grand_salon_a_inflated/powertrain_training_right.npy'
 
 powertrain_trainer = Powertrain_Trainer(powertrain_model=bounded_powertrain, init_params=init_params, dataloader=wmr_train_dl,
-                              timesteps_per_horizon=timesteps_per_horizon, wheel_side='left', dt=0.05)
+                              timesteps_per_horizon=timesteps_per_horizon, wheel_side='right', dt=0.05)
 powertrain_trainer.train_model(init_params=init_params, method=method, bounds=bounds, saved_array_path=trained_params_path)

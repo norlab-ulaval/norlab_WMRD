@@ -180,7 +180,29 @@ class SlipDatasetParser:
             # icp_roll_interpolated_array[i, :] = spline_array[3](self.step_time_vector)
             # icp_pitch_interpolated_array[i, :] = spline_array[4](self.step_time_vector)
             self.icp_yaw_interpolated_array[i, :] = spline_array[2](self.step_time_vector)
-    # TODO: define icp single-step via spline
+
+    def correct_interpolated_smoothed_icp_states_yaw(self):
+        correction_rotmat = np.eye(2)
+        self.icp_x_corrected_interpolated_array = np.zeros(self.icp_x_interpolated_array.shape)
+        self.icp_y_corrected_interpolated_array = np.zeros(self.icp_y_interpolated_array.shape)
+        for i in range(0, self.n_horizons):
+            yaw_offset = np.arctan2(self.icp_x_interpolated_array[i, 5], self.icp_y_interpolated_array[i, 5])
+            if yaw_offset < 0 and yaw_offset > -np.pi/2:
+                correction_yaw_angle = np.pi/2 + yaw_offset
+            if yaw_offset <= -np.pi/2:
+                correction_yaw_angle = np.pi/2 + yaw_offset
+            if yaw_offset >= 0 and yaw_offset < np.pi/2:
+                correction_yaw_angle = -(np.pi/2 - yaw_offset)
+            if yaw_offset >= np.pi/2:
+                correction_yaw_angle = -(np.pi/2 - yaw_offset)
+            # else:
+            #     correction_yaw_angle = yaw_offset
+            yaw_to_rotmat2d(correction_rotmat, correction_yaw_angle)
+            for j in range(0, self.icp_x_array.shape[1]):
+                offset_position = np.array([self.icp_x_interpolated_array[i,j], self.icp_y_interpolated_array[i,j]]).reshape(2,1)
+                corrected_position = correction_rotmat @ offset_position
+                self.icp_x_corrected_interpolated_array[i,j] = corrected_position[0]
+                self.icp_y_corrected_interpolated_array[i,j] = corrected_position[1]
 
     def compute_icp_single_step_vels(self):
         icp_body_to_world_rotmat_2d = np.eye(2)
@@ -215,9 +237,6 @@ class SlipDatasetParser:
             # self.icp_yaw_single_step_vels_array[i, -1] = self.icp_yaw_single_step_vels_array[i, -2]
             self.icp_yaw_single_step_vels_array[i, :] = self.imu_yaw_array[i, :]
 
-            
-
-
     # TODO: compute body_vel_disturptions
 
     def compute_body_vel_disturptions(self):
@@ -234,12 +253,14 @@ class SlipDatasetParser:
         self.compute_transitory_vels()
         self.compute_transitory_body_vels()
         self.compute_interpolated_smoothed_icp_states()
+        self.correct_interpolated_smoothed_icp_states_yaw()
         self.compute_icp_single_step_vels()
         self.compute_body_vel_disturptions()
 
         new_data_array = np.concatenate((self.transitory_left_vels_array, self.transitory_right_vels_array,
                                          self.idd_body_vels_x_array, self.idd_body_vels_y_array, self.idd_body_vels_yaw_array,
                                               self.icp_x_interpolated_array, self.icp_y_interpolated_array, self.icp_yaw_interpolated_array,
+                                              self.icp_x_corrected_interpolated_array, self.icp_y_corrected_interpolated_array,
                                               self.icp_x_single_step_vels_array, self.icp_y_single_step_vels_array, self.icp_yaw_single_step_vels_array,
                                               self.body_vel_disturption_x_array, self.body_vel_disturption_y_array, self.body_vel_disturption_yaw_array),
                                              axis=1)
@@ -283,6 +304,16 @@ class SlipDatasetParser:
         new_cols.extend(str_icp_interpolated_x_list)
         new_cols.extend(str_icp_interpolated_y_list)
         new_cols.extend(str_icp_interpolated_yaw_list)
+
+        str_icp_corrected_interpolated_x_list = []
+        str_icp_corrected_interpolated_y_list = []
+        for i in range(0, 40):
+            str_icp_corrected_interpolated_x_i = 'icp_corrected_interpolated_x_' + str(i)
+            str_icp_corrected_interpolated_y_i = 'icp_corrected_interpolated_y_' + str(i)
+            str_icp_corrected_interpolated_x_list.append(str_icp_corrected_interpolated_x_i)
+            str_icp_corrected_interpolated_y_list.append(str_icp_corrected_interpolated_y_i)
+        new_cols.extend(str_icp_corrected_interpolated_x_list)
+        new_cols.extend(str_icp_corrected_interpolated_y_list)
 
         str_icp_vel_x_list = []
         str_icp_vel_y_list = []
