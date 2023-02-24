@@ -39,6 +39,9 @@ class Ideal_diff_drive:
     def compute_body_vel(self, input):
         return self.jacobian @ input
 
+    def compute_body_vel_horizon(self, horizon_input):
+        return self.jacobian @ input
+
     def compute_wheel_vels(self, body_vel):
         return self.inv_jacobian @ body_vel
 
