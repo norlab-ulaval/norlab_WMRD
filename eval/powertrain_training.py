@@ -28,7 +28,7 @@ params = {'batch_size': 64,
           'num_workers': 6}
 max_epochs = 100
 
-train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/grand_salon_a_inflated/torch_dataset_all.pkl'
+train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/ral2023_dataset/husky/grand_salon_left-deflated/torch_dataset_all.pkl'
 # train_dataset_path = '/home/dominic/repos/norlab_WMRD/data/husky/vel_mask_array_all.npy'
 training_horizon = 2 # seconds
 timestep = 0.05 # seconds
@@ -39,6 +39,7 @@ wmr_train_dl = DataLoader(wmr_train_dataset)
 
 # robot = 'marmotte'
 robot = 'husky'
+# robot = 'warthog-tracks'
 if robot == 'marmotte':
     input_space_dataframe = pd.read_pickle('/home/dominic/repos/norlab_WMRD/data/marmotte/input_space/input_space_data.pkl')
     r = input_space_dataframe['calibrated_radius [m]'].to_numpy()[0]
@@ -59,11 +60,23 @@ if robot == 'husky':
     max_wheel_vel = input_space_dataframe['maximum_wheel_vel_positive [rad/s]'].to_numpy()[0]
     # max_wheel_vel = 5
 
+if robot == 'warthog-tracks':
+    input_space_dataframe = pd.read_pickle('/home/dominic/repos/norlab_WMRD/data/husky/input_space_data/input_space_data_ga.pkl')
+    # r = input_space_dataframe['calibrated_radius [m]'].to_numpy()[0]
+    # baseline = input_space_dataframe['calibrated baseline [m]'].to_numpy()[0]
+    r = 0.3
+    baseline = 1.1652
+    min_wheel_vel = -16
+    # min_wheel_vel = -5
+    max_wheel_vel = 16
+    # max_wheel_vel = 5
+
 bounded_powertrain = Bounded_powertrain(min_wheel_vel, max_wheel_vel, time_constant=0.5, time_delay=0.05, dt=0.05)
-init_params = [0.8, 0.05]
-bounds = [(0.0, 1.0), (0.0, 1.0)]
+init_params = [0.4, 0.05]
+bounds = [(0.0, 5.0), (0.0, 1.0)]
 method = 'Nelder-Mead'
-trained_params_path = 'training_results/husky/powertrain/grand_salon_a_inflated/powertrain_training_right.npy'
+# trained_params_path = 'training_results/marmotte/powertrain/boreal/powertrain_training_right.npy'
+trained_params_path = '../data/ral2023_dataset/husky/grand_salon_left-deflated/trained_params/powertrain/powertrain_training_right.npy'
 
 powertrain_trainer = Powertrain_Trainer(powertrain_model=bounded_powertrain, init_params=init_params, dataloader=wmr_train_dl,
                               timesteps_per_horizon=timesteps_per_horizon, wheel_side='right', dt=0.05)

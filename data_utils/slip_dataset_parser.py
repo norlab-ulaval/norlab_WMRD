@@ -31,7 +31,7 @@ class SlipDatasetParser:
 
         if robot == 'warthog-track':
             self.steady_state_step_len = 140
-            self.wheel_radius = 0.175
+            self.wheel_radius = 0.3
             self.baseline = 1.1652
             self.rate = 0.05
 
@@ -70,6 +70,10 @@ class SlipDatasetParser:
         self.cmd_right_vels_array = self.data[cmd_right_str_list].to_numpy()
         self.encoder_left_vels_array = self.data[encoder_left_str_list].to_numpy()
         self.encoder_right_vels_array = self.data[encoder_right_str_list].to_numpy()
+        self.bounded_powertrain_left.min_vel = np.min(self.encoder_left_vels_array)
+        self.bounded_powertrain_left.max_vel = np.max(self.encoder_left_vels_array)
+        self.bounded_powertrain_right.min_vel = np.min(self.encoder_right_vels_array)
+        self.bounded_powertrain_right.max_vel = np.max(self.encoder_right_vels_array)
 
         icp_x_str_list = []
         icp_y_str_list = []
@@ -111,8 +115,8 @@ class SlipDatasetParser:
         self.transitory_right_vels_array[0, :] = self.cmd_right_vels_array[0, :]
         for i in range(1, self.n_horizons):
             if transitory_state_mask[i] == 1:
-                self.transitory_left_vels_array[i, 0] = self.encoder_left_vels_array[i-1, -1]
-                self.transitory_right_vels_array[i, 0] = self.encoder_right_vels_array[i-1, -1]
+                self.transitory_left_vels_array[i, 0] = self.encoder_left_vels_array[i, 0]
+                self.transitory_right_vels_array[i, 0] = self.encoder_right_vels_array[i, 0]
                 cmd_elapsed_time = 0
                 for j in range(1, self.cmd_right_vels_array.shape[1]):
                     self.transitory_left_vels_array[i, j] = self.bounded_powertrain_left.compute_bounded_wheel_vels(self.cmd_left_vels_array[i, j],
@@ -124,8 +128,8 @@ class SlipDatasetParser:
                         cmd_elapsed_time)
                     cmd_elapsed_time += self.timestep
             else:
-                self.transitory_left_vels_array[i, :] = self.cmd_left_vels_array[i, :]
-                self.transitory_right_vels_array[i, :] = self.cmd_right_vels_array[i, :]
+                self.transitory_left_vels_array[i, :] = np.clip(self.cmd_left_vels_array[i, :], self.bounded_powertrain_left.min_vel, self.bounded_powertrain_left.max_vel)
+                self.transitory_right_vels_array[i, :] = np.clip(self.cmd_right_vels_array[i, :], self.bounded_powertrain_right.min_vel, self.bounded_powertrain_right.max_vel)
 
     def compute_transitory_body_vels(self):
         self.idd_body_vels_x_array = np.zeros((self.cmd_left_vels_array.shape[0], self.cmd_left_vels_array.shape[1]))

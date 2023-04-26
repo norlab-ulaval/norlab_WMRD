@@ -30,6 +30,22 @@ class Powertrain_Trainer:
         counted_pred_counter = 0
         # self.x_train[idx], self.y_train[idx], self.calib_step[idx], self.mask[idx], self.cmd_vx[idx], self.cmd_omega[idx], \
         #                self.encoder_vx[idx], self.encoder_omega[idx], self.icp_vx[idx], self.icp_vy[idx], self.icp_omega[idx]
+
+        encoder_left_str_list = []
+        encoder_right_str_list = []
+        for i in range(0, 40):
+            str_encoder_left_i = 'left_wheel_vel_' + str(i)
+            str_encoder_right_i = 'right_wheel_vel_' + str(i)
+            encoder_left_str_list.append(str_encoder_left_i)
+            encoder_right_str_list.append(str_encoder_right_i)
+
+        if self.wheel_side == 'left':
+            self.powetrain_model.min_vel = min(self.dataloader.dataset.data['left_wheel_vel_39'])
+            self.powetrain_model.max_vel = max(self.dataloader.dataset.data['left_wheel_vel_39'])
+        if self.wheel_side == 'right':
+            self.powetrain_model.min_vel = min(self.dataloader.dataset.data['right_wheel_vel_39'])
+            self.powetrain_model.max_vel = max(self.dataloader.dataset.data['right_wheel_vel_39'])
+
         for i, (inputs, targets, step, encoders, icp_vx, icp_vy, icp_omega, steady_state_mask, transitory_state_mask) in enumerate(self.dataloader):
             # print(inputs)
             # print(targets)
