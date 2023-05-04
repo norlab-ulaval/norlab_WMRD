@@ -159,13 +159,14 @@ class SlipDatasetParser:
         return(unwrapped_trajectory)
 
     def icp_traj_as_smoothed_spline(self, window_id):
-        icp_x_spline = make_smoothing_spline(self.step_time_vector, self.icp_x_array[window_id, :])
-        icp_y_spline = make_smoothing_spline(self.step_time_vector, self.icp_y_array[window_id, :])
+        lambda_param = 0.8
+        icp_x_spline = make_smoothing_spline(self.step_time_vector, self.icp_x_array[window_id, :], lam=lambda_param)
+        icp_y_spline = make_smoothing_spline(self.step_time_vector, self.icp_y_array[window_id, :], lam=lambda_param)
         # icp_z_spline = make_smoothing_spline(self.step_time_vector, self.icp_z_array[window_id, :])
         # icp_roll_spline = make_smoothing_spline(self.step_time_vector, self.icp_roll_array[window_id, :])
         # icp_pitch_spline = make_smoothing_spline(self.step_time_vector, self.icp_pitch_array[window_id, :])
         # TODO : implement smoothing spline
-        icp_yaw_spline = make_smoothing_spline(self.step_time_vector, self.unwrap_trajectory(self.icp_yaw_array[window_id, :]))
+        icp_yaw_spline = make_smoothing_spline(self.step_time_vector, self.unwrap_trajectory(self.icp_yaw_array[window_id, :]), lam=lambda_param)
 
         return np.array([icp_x_spline, icp_y_spline, icp_yaw_spline])
 
