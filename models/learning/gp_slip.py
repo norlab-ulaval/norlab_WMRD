@@ -137,8 +137,8 @@ class FullBodySlipGaussianProcess:
         return self.sigma_mean, self.sigma_cov
 
     def predict_slip_from_body_vels(self, body_idd_vels):
-        prediction_input_x = body_idd_vels[:, 0]  # longitudinal body vel
-        prediction_input_y = body_idd_vels[:, 0] * body_idd_vels[:, 2]  # centrifugal force
+        prediction_input_x = body_idd_vels[:, 0].reshape(-1, 1)  # longitudinal body vel
+        prediction_input_y = (body_idd_vels[:, 0] * body_idd_vels[:, 2]).reshape(-1, 1)  # centrifugal force
         prediction_input_yaw = np.column_stack((body_idd_vels[:, 0] * body_idd_vels[:, 2],  # centrifugal force
                                               body_idd_vels[:, 0],  # assymetry
                                               body_idd_vels[:, 2]))  # angular body vel
@@ -149,17 +149,22 @@ class FullBodySlipGaussianProcess:
         predicted_slip_yaw_mean, predicted_slip_yaw_cov = self.gaussian_process_slip_yaw.predict(prediction_input_yaw, return_cov=True)
         # predicted_slip_y_mean, predicted_slip_y_cov = self.body_y_slip_blr.predict_slip(prediction_input_y)
         # predicted_slip_yaw_mean, predicted_slip_yaw_cov = self.body_yaw_slip_blr.predict_slip(prediction_input_yaw)
-        return predicted_slip_x_mean, predicted_slip_x_cov, predicted_slip_y_mean, predicted_slip_y_cov, predicted_slip_yaw_mean, predicted_slip_yaw_cov
+        return predicted_slip_x_mean.reshape(-1, 1), predicted_slip_x_cov, \
+            predicted_slip_y_mean.reshape(-1, 1), predicted_slip_y_cov, \
+            predicted_slip_yaw_mean.reshape(-1, 1), predicted_slip_yaw_cov
 
     def predict_horizon_from_body_idd_vels(self, body_idd_vels, init_state, init_state_covariance):
         horizon_len = body_idd_vels.shape[0]
         predicted_slip_x_mean, predicted_slip_x_cov, predicted_slip_y_mean, predicted_slip_y_cov, predicted_slip_yaw_mean, predicted_slip_yaw_cov = self.predict_slip_from_body_vels(body_idd_vels)
+
         prediction_means = np.zeros((self.n_state_dimensions, horizon_len))
         prediction_means[:3, 0] = init_state
         prediction_covariances = np.zeros((2 * self.n_state_dimensions, 2 * self.n_state_dimensions, horizon_len))
         prediction_covariances[:3, :3, 0] = np.eye(3) * init_state_covariance
 
         for j in range(0, horizon_len-1):
+            # print(predicted_slip_x_cov.shape)
+            # print(predicted_slip_x_mean[j])
             prediction_slip_mean_vector = np.concatenate((prediction_means[:, j], predicted_slip_x_mean[j],
                                                           predicted_slip_y_mean[j], predicted_slip_yaw_mean[j]))
             prediction_covariances[3:, 3:, j] = np.diag(np.array([predicted_slip_x_cov[j, j],
