@@ -22,18 +22,21 @@ class AccelerationDatasetParser:
             self.wheel_radius = 0.33 / 2
             self.baseline = 0.55
             self.rate = 0.05
+            self.lidar_angle = np.radians(10)
 
         if robot == 'warthog-wheel':
             self.steady_state_step_len = 140
             self.wheel_radius = 0.3
             self.baseline = 1.1652
             self.rate = 0.05
+            self.lidar_angle = np.radians(0)
 
         if robot == 'warthog-track':
             self.steady_state_step_len = 140
             self.wheel_radius = 0.3
             self.baseline = 1.1652
             self.rate = 0.05
+            self.lidar_angle = np.radians(0)
 
         if robot == 'marmotte':
             self.steady_state_step_len = 140
@@ -42,6 +45,7 @@ class AccelerationDatasetParser:
             self.training_horizon = 2
             self.calib_step_time = 6
             self.rate = 0.05
+            self.lidar_angle = np.radians(10)
 
         self.ideal_diff_drive = Ideal_diff_drive(self.wheel_radius, self.baseline, self.timestep)
         self.k = np.array([self.wheel_radius, self.baseline])
@@ -209,6 +213,17 @@ class AccelerationDatasetParser:
     def remove_gravity_vector_from_imu(self):
         # TODO : use this function to extract gravity vector from icp orientation, then remove from imu gravity_vector = euler_to_rotmat(init_state[2:])[:, 2:]
         # TODO: use imu angular vel to derive angular acceleration
+        self.imu_accel_x_no_grav_array = np.zeros((self.imu_accel_x_array.shape[0], self.imu_accel_x_array.shape[1]))
+        self.imu_accel_y_no_grav_array = np.zeros((self.imu_accel_y_array.shape[0], self.imu_accel_y_array.shape[1]))
+        imu_transform = np.eye(4)
+        for i in range(0, self.n_horizons):
+            for j in range(0, self.imu_accel_x_array.shape[1]):
+                roll_angle = self.icp_roll_array[i, j]
+                pitch_angle = self.icp_pitch_array[i, j] + self.lidar_angle
+                euler_to_transform(np.array([roll_angle, pitch_angle, 0]), imu_transform)
+                gravity_vector = imu_transform @ np.array([0, 0, 9.8, 1.0])
+                self.imu_accel_x_no_grav_array[i,j] = self.imu_accel_x_array[i,j] - gravity_vector[0]
+                self.imu_accel_y_no_grav_array[i,j] = self.imu_accel_y_array[i,j] - gravity_vector[1]
         return None
 
     def append_acceleration_elements_to_dataset(self):
@@ -220,93 +235,57 @@ class AccelerationDatasetParser:
         # self.compute_body_vel_disturptions()
         self.compute_idd_accelerations()
         self.compute_icp_accelerations()
+        self.remove_gravity_vector_from_imu()
 
-
-        new_data_array = np.concatenate((self.transitory_left_vels_array, self.transitory_right_vels_array,
-                                         self.idd_body_vels_x_array, self.idd_body_vels_y_array, self.idd_body_vels_yaw_array,
-                                              self.icp_x_interpolated_array, self.icp_y_interpolated_array, self.icp_yaw_interpolated_array,
-                                              self.icp_x_corrected_interpolated_array, self.icp_y_corrected_interpolated_array,
-                                              self.icp_x_single_step_vels_array, self.icp_y_single_step_vels_array, self.icp_yaw_single_step_vels_array,
-                                              self.body_vel_disturption_x_array, self.body_vel_disturption_y_array, self.body_vel_disturption_yaw_array),
-                                             axis=1)
+        new_data_array = np.concatenate((self.idd_body_accelerations_x_array,
+                                         self.idd_body_accelerations_y_array,
+                                         self.idd_body_accelerations_yaw_array,
+                                         self.icp_x_single_step_accelerations_array,
+                                         self.icp_y_single_step_accelerations_array,
+                                         self.icp_yaw_single_step_accelerations_array,
+                                         self.imu_accel_x_no_grav_array,
+                                         self.imu_accel_y_no_grav_array),
+                                        axis=1)
 
         new_cols = []
 
-        # str_transitory_vel_left_list = []
-        # str_transitory_vel_right_list = []
-        # for i in range(0, 40):
-        #     str_transitory_vel_left_i = 'transitory_vel_left_' + str(i)
-        #     str_transitory_vel_right_i = 'transitory_vel_right_' + str(i)
-        #     str_transitory_vel_left_list.append(str_transitory_vel_left_i)
-        #     str_transitory_vel_right_list.append(str_transitory_vel_right_i)
-        # new_cols.extend(str_transitory_vel_left_list)
-        # new_cols.extend(str_transitory_vel_right_list)
-        #
-        # str_idd_vel_x_list = []
-        # str_idd_vel_y_list = []
-        # str_idd_vel_yaw_list = []
-        # for i in range(0, 40):
-        #     str_idd_vel_x_i = 'idd_vel_x_' + str(i)
-        #     str_idd_vel_y_i = 'idd_vel_y_' + str(i)
-        #     str_idd_vel_yaw_i = 'idd_vel_yaw_' + str(i)
-        #     str_idd_vel_x_list.append(str_idd_vel_x_i)
-        #     str_idd_vel_y_list.append(str_idd_vel_y_i)
-        #     str_idd_vel_yaw_list.append(str_idd_vel_yaw_i)
-        # new_cols.extend(str_idd_vel_x_list)
-        # new_cols.extend(str_idd_vel_y_list)
-        # new_cols.extend(str_idd_vel_yaw_list)
-        #
-        # str_icp_interpolated_x_list = []
-        # str_icp_interpolated_y_list = []
-        # str_icp_interpolated_yaw_list = []
-        # for i in range(0, 40):
-        #     str_icp_interpolated_x_i = 'icp_interpolated_x_' + str(i)
-        #     str_icp_interpolated_y_i = 'icp_interpolated_y_' + str(i)
-        #     str_icp_interpolated_yaw_i = 'icp_interpolated_yaw_' + str(i)
-        #     str_icp_interpolated_x_list.append(str_icp_interpolated_x_i)
-        #     str_icp_interpolated_y_list.append(str_icp_interpolated_y_i)
-        #     str_icp_interpolated_yaw_list.append(str_icp_interpolated_yaw_i)
-        # new_cols.extend(str_icp_interpolated_x_list)
-        # new_cols.extend(str_icp_interpolated_y_list)
-        # new_cols.extend(str_icp_interpolated_yaw_list)
-        #
-        # str_icp_corrected_interpolated_x_list = []
-        # str_icp_corrected_interpolated_y_list = []
-        # for i in range(0, 40):
-        #     str_icp_corrected_interpolated_x_i = 'icp_corrected_interpolated_x_' + str(i)
-        #     str_icp_corrected_interpolated_y_i = 'icp_corrected_interpolated_y_' + str(i)
-        #     str_icp_corrected_interpolated_x_list.append(str_icp_corrected_interpolated_x_i)
-        #     str_icp_corrected_interpolated_y_list.append(str_icp_corrected_interpolated_y_i)
-        # new_cols.extend(str_icp_corrected_interpolated_x_list)
-        # new_cols.extend(str_icp_corrected_interpolated_y_list)
-        #
-        # str_icp_vel_x_list = []
-        # str_icp_vel_y_list = []
-        # str_icp_vel_yaw_list = []
-        # for i in range(0, 40):
-        #     str_icp_vel_x_i = 'icp_vel_x_' + str(i)
-        #     str_icp_vel_y_i = 'icp_vel_y_' + str(i)
-        #     str_icp_vel_yaw_i = 'icp_vel_yaw_' + str(i)
-        #     str_icp_vel_x_list.append(str_icp_vel_x_i)
-        #     str_icp_vel_y_list.append(str_icp_vel_y_i)
-        #     str_icp_vel_yaw_list.append(str_icp_vel_yaw_i)
-        # new_cols.extend(str_icp_vel_x_list)
-        # new_cols.extend(str_icp_vel_y_list)
-        # new_cols.extend(str_icp_vel_yaw_list)
-        #
-        # str_body_vel_disturption_x_list = []
-        # str_body_vel_disturption_y_list = []
-        # str_body_vel_disturption_yaw_list = []
-        # for i in range(0, 40):
-        #     str_body_vel_disturption_x_i = 'body_vel_disturption_x_' + str(i)
-        #     str_body_vel_disturption_y_i = 'body_vel_disturption_y_' + str(i)
-        #     str_body_vel_disturption_yaw_i = 'body_vel_disturption_yaw_' + str(i)
-        #     str_body_vel_disturption_x_list.append(str_body_vel_disturption_x_i)
-        #     str_body_vel_disturption_y_list.append(str_body_vel_disturption_y_i)
-        #     str_body_vel_disturption_yaw_list.append(str_body_vel_disturption_yaw_i)
-        # new_cols.extend(str_body_vel_disturption_x_list)
-        # new_cols.extend(str_body_vel_disturption_y_list)
-        # new_cols.extend(str_body_vel_disturption_yaw_list)
+        str_idd_acceleration_x_list = []
+        str_idd_acceleration_y_list = []
+        str_idd_acceleration_yaw_list = []
+        for i in range(0, 40):
+            str_idd_acceleration_x_i = 'idd_acceleration_x_' + str(i)
+            str_idd_acceleration_y_i = 'idd_acceleration_y_' + str(i)
+            str_idd_acceleration_yaw_i = 'idd_acceleration_yaw_' + str(i)
+            str_idd_acceleration_x_list.append(str_idd_acceleration_x_i)
+            str_idd_acceleration_y_list.append(str_idd_acceleration_y_i)
+            str_idd_acceleration_yaw_list.append(str_idd_acceleration_yaw_i)
+        new_cols.extend(str_idd_acceleration_x_list)
+        new_cols.extend(str_idd_acceleration_y_list)
+        new_cols.extend(str_idd_acceleration_yaw_list)
+
+        str_icp_acceleration_x_list = []
+        str_icp_acceleration_y_list = []
+        str_icp_acceleration_yaw_list = []
+        for i in range(0, 40):
+            str_icp_acceleration_x_i = 'icp_acceleration_x_' + str(i)
+            str_icp_acceleration_y_i = 'icp_acceleration_y_' + str(i)
+            str_icp_acceleration_yaw_i = 'icp_acceleration_yaw_' + str(i)
+            str_icp_acceleration_x_list.append(str_icp_acceleration_x_i)
+            str_icp_acceleration_y_list.append(str_icp_acceleration_y_i)
+            str_icp_acceleration_yaw_list.append(str_icp_acceleration_yaw_i)
+        new_cols.extend(str_icp_acceleration_x_list)
+        new_cols.extend(str_icp_acceleration_y_list)
+        new_cols.extend(str_icp_acceleration_yaw_list)
+
+        str_imu_acceleration_x_list = []
+        str_imu_acceleration_y_list = []
+        for i in range(0, 40):
+            str_imu_acceleration_x_i = 'imu_acceleration_x_' + str(i)
+            str_imu_acceleration_y_i = 'imu_acceleration_y_' + str(i)
+            str_imu_acceleration_x_list.append(str_imu_acceleration_x_i)
+            str_imu_acceleration_y_list.append(str_imu_acceleration_y_i)
+        new_cols.extend(str_imu_acceleration_x_list)
+        new_cols.extend(str_imu_acceleration_y_list)
 
         self.data[new_cols] = new_data_array
 

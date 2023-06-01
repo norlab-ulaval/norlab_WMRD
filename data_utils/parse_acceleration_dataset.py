@@ -5,8 +5,8 @@ import pandas as pd
 
 from data_utils.acceleration_dataset_parser import AccelerationDatasetParser
 
-slip_dataset_path = '/home/dominic/repos/norlab_WMRD/data/ral2023_dataset/warthog_tracks/grand-axe_crusted-snow/slip_dataset_all.pkl'
-export_dataset_path = '/home/dominic/repos/norlab_WMRD/data/ral2023_dataset/warthog_tracks/grand-axe_crusted-snow/acceleration_dataset.pkl'
+slip_dataset_path = '/home/dominic/repos/norlab_WMRD/data/ral2023_dataset/warthog_tracks/boreal_mud/slip_dataset_all.pkl'
+export_dataset_path = '/home/dominic/repos/norlab_WMRD/data/ral2023_dataset/warthog_tracks/boreal_mud/acceleration_dataset.pkl'
 # robot = "husky"
 # robot = "marmotte"
 robot = "warthog-track"
