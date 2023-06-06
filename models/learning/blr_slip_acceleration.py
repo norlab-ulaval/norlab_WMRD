@@ -1,7 +1,7 @@
 import numpy as np
 from util.transform_algebra import *
 
-class SlipBayesianLinearRegression:
+class SlipAccelerationBayesianLinearRegression:
     def __init__(self, n_dimensions, a_param_init, b_param_init, param_variance_init, variance_init):
         self.n_dimensions = n_dimensions
         self.weights_init = np.zeros(n_dimensions)  # w_0
@@ -37,12 +37,12 @@ class SlipBayesianLinearRegression:
 
         return prediction_mean, prediction_variance
 
-class FullBodySlipBayesianLinearRegression:
+class FullBodySlipAccelerationBayesianLinearRegression:
     def __init__(self, n_dimensions_x, n_dimensions_y, n_dimensions_yaw, a_param_init, b_param_init, param_variance_init, variance_init, baseline, radius, dt, kappa_param):
 
-        self.body_x_slip_blr = SlipBayesianLinearRegression(n_dimensions_x, a_param_init, b_param_init, param_variance_init, variance_init)
-        self.body_y_slip_blr = SlipBayesianLinearRegression(n_dimensions_y, a_param_init, b_param_init, param_variance_init, variance_init)
-        self.body_yaw_slip_blr = SlipBayesianLinearRegression(n_dimensions_yaw, a_param_init, b_param_init, param_variance_init, variance_init)
+        self.body_x_slip_blr = SlipAccelerationBayesianLinearRegression(n_dimensions_x, a_param_init, b_param_init, param_variance_init, variance_init)
+        self.body_y_slip_blr = SlipAccelerationBayesianLinearRegression(n_dimensions_y, a_param_init, b_param_init, param_variance_init, variance_init)
+        self.body_yaw_slip_blr = SlipAccelerationBayesianLinearRegression(n_dimensions_yaw, a_param_init, b_param_init, param_variance_init, variance_init)
 
         self.jacobian = radius * np.array([[0.5, 0.5],
                                       [-1 / (baseline), 1 / (baseline)]])
@@ -64,14 +64,15 @@ class FullBodySlipBayesianLinearRegression:
         self.next_sigma_states = np.zeros((3, self.n_sigma_points))
         self.sigma_sum = np.zeros((self.n_state_dimensions, self.n_state_dimensions))
 
-    def train_params(self, idd_velocities, idd_accelerations, slip_velocities):
-        training_input_x = np.column_stack(idd_velocities[:, 0], # longitudinal body vel
-                                           idd_accelerations[:, 0]) # longitudinal acceleration
+    def train_params(self, idd_velocities, slip_velocities):
+        idd_accelerations = np.gradient(idd_velocities, axis=0)
+        training_input_x = np.column_stack((idd_velocities[:, 0], # longitudinal body vel
+                                           idd_accelerations[:, 0])) # longitudinal acceleration
         training_input_y = idd_velocities[:, 0] * idd_velocities[:, 2] # centrifugal force
         training_input_yaw = np.column_stack((idd_velocities[:, 0] * idd_velocities[:, 2], # centrifugal force
                                             idd_velocities[:, 0], # assymetry
-                                            idd_velocities[:, 2]), # angular body vel
-                                            idd_accelerations[:, 2]) # angular acceleration
+                                            idd_velocities[:, 2], # angular body vel
+                                            idd_accelerations[:, 2])) # angular acceleration
 
         self.body_x_slip_blr.train_params(training_input_x, slip_velocities[:, 0])
         self.body_y_slip_blr.train_params(training_input_y, slip_velocities[:, 1])
@@ -150,12 +151,15 @@ class FullBodySlipBayesianLinearRegression:
         self.sigma_sum = np.zeros((self.n_state_dimensions, self.n_state_dimensions))
         return self.sigma_mean, self.sigma_cov
 
-    def predict_slip_from_body_vels(self, body_idd_vels):
-        prediction_input_x = body_idd_vels[:, 0]  # longitudinal body vel
-        prediction_input_y = body_idd_vels[:, 0] * body_idd_vels[:, 2]  # centrifugal force
-        prediction_input_yaw = np.column_stack((body_idd_vels[:, 0] * body_idd_vels[:, 2],  # centrifugal force
-                                              body_idd_vels[:, 0],  # assymetry
-                                              body_idd_vels[:, 2]))  # angular body vel
+    def predict_slip_from_body_vels(self, idd_velocities):
+        idd_accelerations = np.gradient(idd_velocities, axis=0)
+        prediction_input_x = np.column_stack((idd_velocities[:, 0],  # longitudinal body vel
+                                            idd_accelerations[:, 0]))  # longitudinal acceleration
+        prediction_input_y = idd_velocities[:, 0] * idd_velocities[:, 2]  # centrifugal force
+        prediction_input_yaw = np.column_stack((idd_velocities[:, 0] * idd_velocities[:, 2],  # centrifugal force
+                                              idd_velocities[:, 0],  # assymetry
+                                              idd_velocities[:, 2],  # angular body vel
+                                              idd_accelerations[:, 2]))  # angular acceleration
 
         predicted_slip_x_mean, predicted_slip_x_cov = self.body_x_slip_blr.predict_slip(prediction_input_x)
         predicted_slip_y_mean, predicted_slip_y_cov = self.body_y_slip_blr.predict_slip(prediction_input_y)

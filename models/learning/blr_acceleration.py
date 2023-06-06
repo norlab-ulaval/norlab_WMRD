@@ -59,9 +59,9 @@ class FullBodyAccelerationBayesianLinearRegression:
         self.kappa_param = kappa_param
         self.n_state_dimensions = 3
         self.n_sigma_points = 4 * self.n_state_dimensions + 1
-        self.sigma_points_array = np.zeros((6, self.n_sigma_points))
+        self.sigma_points_array = np.zeros((9, self.n_sigma_points))
         self.next_sigma_states = np.zeros((6, self.n_sigma_points))
-        self.sigma_sum = np.zeros((self.n_state_dimensions, self.n_state_dimensions))
+        self.sigma_sum = np.zeros((2*self.n_state_dimensions, 2*self.n_state_dimensions))
 
     def train_params(self, idd_velocities, icp_velocities, body_accelerations):
         training_input_x = np.column_stack((idd_velocities[:, 0],  # commanded_velocity
@@ -118,27 +118,27 @@ class FullBodyAccelerationBayesianLinearRegression:
         blr_body_to_world_rotmat = np.eye(2)
         n_sigma_points = self.sigma_points_array.shape[1]
 
-        for i in range(1, n_sigma_points):
+        for i in range(0, n_sigma_points):
 
-            blr_body_vel = np.array([self.next_sigma_states[3, i-1], 0]).reshape(2, 1)
+            blr_body_vel = np.array([self.sigma_points_array[3, i], 0]).reshape(2, 1)
             yaw_to_rotmat2d(blr_body_to_world_rotmat, self.sigma_points_array[2, i])
             blr_world_vel = blr_body_to_world_rotmat @ blr_body_vel
-            self.next_sigma_states[0, i] = self.next_sigma_states[0, i] + (blr_world_vel[0]) * self.dt
-            self.next_sigma_states[1, i] = self.next_sigma_states[1, i-1] + (blr_world_vel[1]) * self.dt
-            self.next_sigma_states[2, i] = self.next_sigma_states[2, i] + self.sigma_points_array[5, i-1] * self.dt
-            self.next_sigma_states[3, i] = self.next_sigma_states[3, i] + self.sigma_points_array[3, i] * self.dt
-            self.next_sigma_states[4, i] = 0.0
-            self.next_sigma_states[5, i] = self.next_sigma_states[5, i] + self.sigma_points_array[5, i] * self.dt
+            self.next_sigma_states[0, i] = self.sigma_points_array[0, i] + (blr_world_vel[0]) * self.dt #position update
+            self.next_sigma_states[1, i] = self.sigma_points_array[1, i] + (blr_world_vel[1]) * self.dt
+            self.next_sigma_states[2, i] = self.sigma_points_array[2, i] + self.sigma_points_array[5, i] * self.dt
+            self.next_sigma_states[3, i] = self.sigma_points_array[3, i] + self.sigma_points_array[6, i] # velocity update
+            self.next_sigma_states[4, i] = self.sigma_points_array[4, i]
+            self.next_sigma_states[5, i] = self.sigma_points_array[5, i] + self.sigma_points_array[8, i]
 
     def extract_mean_covariance_from_sigma_points(self):
         sigma_factor = 1 / (2 * self.n_state_dimensions + self.kappa_param)
         self.sigma_mean = sigma_factor * (self.kappa_param * self.next_sigma_states[:, 0] + 0.5 * np.sum(self.next_sigma_states[:, 1:], axis=1))
         for i in range(1, 4 * self.n_state_dimensions):
-            self.sigma_sum += (self.next_sigma_states[:, i] - self.sigma_mean).reshape(3, 1) @ (self.next_sigma_states[:, i] - self.sigma_mean).reshape(1, 3)
-        self.sigma_cov = sigma_factor * (self.kappa_param * ((self.next_sigma_states[:, 0] - self.sigma_mean).reshape(3, 1) @
-                                                   (self.next_sigma_states[:, 0] - self.sigma_mean).reshape(1, 3)) + 0.5 * (self.sigma_sum))
-        self.sigma_sum = np.zeros((self.n_state_dimensions, self.n_state_dimensions))
-        return self.sigma_mean, self.sigma_cov
+            self.sigma_sum += (self.next_sigma_states[:, i] - self.sigma_mean).reshape(6, 1) @ (self.next_sigma_states[:, i] - self.sigma_mean).reshape(1, 6)
+        self.sigma_cov = sigma_factor * (self.kappa_param * ((self.next_sigma_states[:, 0] - self.sigma_mean).reshape(6, 1) @
+                                                   (self.next_sigma_states[:, 0] - self.sigma_mean).reshape(1, 6)) + 0.5 * (self.sigma_sum))
+        self.sigma_sum = np.zeros((2*self.n_state_dimensions, 2*self.n_state_dimensions))
+        # return self.sigma_mean, self.sigma_cov
 
     def predict_acceleration_from_body_vels(self, body_idd_vels, body_vels):
         prediction_input_x = np.column_stack((body_idd_vels[0],  # commanded_velocity
@@ -148,33 +148,36 @@ class FullBodyAccelerationBayesianLinearRegression:
 
         predicted_acceleration_x_mean, predicted_acceleration_x_cov = self.body_x_acceleration_blr.predict_acceleration(prediction_input_x)
         predicted_acceleration_y_mean = np.array([0.0]).reshape(1,1)
-        predicted_acceleration_y_cov = 0.0
+        predicted_acceleration_y_cov = 0.0001
         predicted_acceleration_yaw_mean, predicted_acceleration_yaw_cov = self.body_yaw_acceleration_blr.predict_acceleration(prediction_input_yaw)
         return predicted_acceleration_x_mean, predicted_acceleration_x_cov, predicted_acceleration_y_mean, predicted_acceleration_y_cov, predicted_acceleration_yaw_mean, predicted_acceleration_yaw_cov
 
-    def predict_horizon_from_body_idd_vels(self, body_idd_vels, init_state, init_state_covariance, init_body_vels):
+    def predict_horizon_from_body_idd_vels(self, body_idd_vels, init_state, init_state_covariance, init_body_vels, init_vel_covariance):
         horizon_len = body_idd_vels.shape[0]
-        body_vels = init_body_vels
-        prediction_means = np.zeros((self.n_state_dimensions, horizon_len))
+        prediction_means = np.zeros((2*self.n_state_dimensions, horizon_len))
         prediction_means[:3, 0] = init_state
-        prediction_covariances = np.zeros((2 * self.n_state_dimensions, 2 * self.n_state_dimensions, horizon_len))
+        prediction_means[3:6, 0] = init_body_vels
+        prediction_covariances = np.zeros((3 * self.n_state_dimensions, 3 * self.n_state_dimensions, horizon_len))
         prediction_covariances[:3, :3, 0] = np.eye(3) * init_state_covariance
+        prediction_covariances[3:6, 3:6, 0] = np.eye(3) * init_vel_covariance
 
         for j in range(0, horizon_len-1):
-            predicted_acceleration_x_mean, predicted_acceleration_x_cov, predicted_acceleration_y_mean, predicted_acceleration_y_cov, predicted_acceleration_yaw_mean, predicted_acceleration_yaw_cov = self.predict_acceleration_from_body_vels(body_idd_vels[j, :], body_vels)
+            predicted_acceleration_x_mean, predicted_acceleration_x_cov, predicted_acceleration_y_mean, predicted_acceleration_y_cov, predicted_acceleration_yaw_mean, predicted_acceleration_yaw_cov = self.predict_acceleration_from_body_vels(body_idd_vels[j, :], prediction_means[3:, j])
 
-            prediction_acceleration_mean_vector = np.concatenate((prediction_means[:, j].reshape(3,1), predicted_acceleration_x_mean,
+            prediction_acceleration_mean_vector = np.concatenate((prediction_means[:, j].reshape(6,1), predicted_acceleration_x_mean,
                                                           predicted_acceleration_y_mean, predicted_acceleration_yaw_mean))
-            prediction_covariances[3:, 3:, j] = np.diag(np.array([predicted_acceleration_x_cov,
+            prediction_covariances[6:, 6:, j] = np.diag((predicted_acceleration_x_cov[0,0],
                                                                   predicted_acceleration_y_cov,
-                                                                  predicted_acceleration_yaw_cov]))
-            self.compute_sigma_points(prediction_acceleration_mean_vector, prediction_covariances[:, :, j])
-            self.predict_from_sigma_points(body_vels[0], body_vels[1], body_vels[2])
-            body_vels[0] = body_vels[0] + predicted_acceleration_x_mean * self.dt
-            body_vels[1] = body_vels[1] + predicted_acceleration_y_mean * self.dt
-            body_vels[2] = body_vels[2] + predicted_acceleration_yaw_mean * self.dt
-            prediction_means[:, j+1], prediction_covariances[:3, :3, j+1] = self.extract_mean_covariance_from_sigma_points()
+                                                                  predicted_acceleration_yaw_cov[0,0]))
+            # todo: need to compute velocity covariance at each time step
+            self.compute_sigma_points(prediction_acceleration_mean_vector.reshape(9), prediction_covariances[:, :, j])
+            self.predict_from_sigma_points()
 
-        return prediction_means, prediction_covariances[:3, :3, :]
+            self.extract_mean_covariance_from_sigma_points()
+            prediction_means[:, j + 1] = self.sigma_mean
+            prediction_covariances[:6, :6, j + 1] = self.sigma_cov
+
+
+        return prediction_means[:3], prediction_covariances[:3, :3, :]
 
 
