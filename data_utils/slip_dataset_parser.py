@@ -22,18 +22,26 @@ class SlipDatasetParser:
             self.wheel_radius = 0.33 / 2
             self.baseline = 0.55
             self.rate = 0.05
+            min_wheel_vel = -7
+            max_wheel_vel = 7
 
         if robot == 'warthog-wheel':
             self.steady_state_step_len = 140
             self.wheel_radius = 0.3
             self.baseline = 1.1652
             self.rate = 0.05
+            min_wheel_vel = -14
+            # min_wheel_vel = -5
+            max_wheel_vel = 14
 
         if robot == 'warthog-track':
             self.steady_state_step_len = 140
             self.wheel_radius = 0.3
             self.baseline = 1.1652
             self.rate = 0.05
+            min_wheel_vel = -14
+            # min_wheel_vel = -5
+            max_wheel_vel = 14
 
         if robot == 'marmotte':
             self.steady_state_step_len = 140
@@ -42,15 +50,18 @@ class SlipDatasetParser:
             self.training_horizon = 2
             self.calib_step_time = 6
             self.rate = 0.05
+            min_wheel_vel = -10
+            # min_wheel_vel = -5
+            max_wheel_vel = 10
 
         self.ideal_diff_drive = Ideal_diff_drive(self.wheel_radius, self.baseline, self.timestep)
         self.k = np.array([self.wheel_radius, self.baseline])
 
         bounded_powertrain_left_params = np.load(powertrain_model_params_path + 'powertrain_training_left.npy')
-        self.bounded_powertrain_left = Bounded_powertrain(-10, 10, bounded_powertrain_left_params[0],
+        self.bounded_powertrain_left = Bounded_powertrain(min_wheel_vel, max_wheel_vel, bounded_powertrain_left_params[0],
                                                           bounded_powertrain_left_params[1], self.timestep)
         bounded_powertrain_right_params = np.load(powertrain_model_params_path + 'powertrain_training_right.npy')
-        self.bounded_powertrain_right = Bounded_powertrain(-10, 10, bounded_powertrain_right_params[0],
+        self.bounded_powertrain_right = Bounded_powertrain(min_wheel_vel, max_wheel_vel, bounded_powertrain_right_params[0],
                                                           bounded_powertrain_right_params[1], self.timestep)
 
         cmd_left_str_list = []

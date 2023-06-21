@@ -398,7 +398,7 @@ class DatasetParser:
                     torch_input_array[i, 407 + j] = -self.parsed_dataset[horizon_start + j, 3] # imu yaw rate
                 if self.robot == 'husky':
                     torch_input_array[i, 407 + j] = self.parsed_dataset[horizon_start + j, 3]  # imu yaw rate
-                if self.robot == 'warthog-track':
+                if self.robot == 'warthog-track' or self.robot == 'warthog-wheel':
                     torch_input_array[i, 407 + j] = self.parsed_dataset[horizon_start + j, 3]  # imu yaw rate
             # if torch_input_array[i, 8] <= 0:  # and torch_input_array[i, 8] <= 0:
             #     torch_input_array[i, 9] = 0
