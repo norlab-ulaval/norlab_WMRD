@@ -1,8 +1,5 @@
 import numpy as np
 import pandas as pd
-import torch
-
-from eval.torch_dataset import TorchWMRDataset
 
 from util.util_func import *
 from util.transform_algebra import *

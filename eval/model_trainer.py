@@ -1,8 +1,4 @@
 import numpy as np
-import pandas as pd
-import torch
-
-from eval.torch_dataset import TorchWMRDataset
 
 from scipy.optimize import minimize
 

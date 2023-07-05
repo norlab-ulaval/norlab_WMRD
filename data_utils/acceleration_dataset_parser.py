@@ -4,9 +4,7 @@ from scipy.interpolate import make_smoothing_spline
 
 from util.util_func import *
 from util.transform_algebra import *
-from util.model_func import diff_drive
 from models.kinematic.ideal_diff_drive import Ideal_diff_drive
-from models.powertrain.bounded_powertrain import Bounded_powertrain
 
 class AccelerationDatasetParser:
     def __init__(self, slip_dataset_path, export_dataset_path, robot):
