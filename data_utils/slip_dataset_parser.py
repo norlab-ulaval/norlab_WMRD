@@ -4,7 +4,6 @@ from scipy.interpolate import make_smoothing_spline
 
 from util.util_func import *
 from util.transform_algebra import *
-from util.model_func import diff_drive
 from models.kinematic.ideal_diff_drive import Ideal_diff_drive
 from models.powertrain.bounded_powertrain import Bounded_powertrain
 
@@ -22,18 +21,26 @@ class SlipDatasetParser:
             self.wheel_radius = 0.33 / 2
             self.baseline = 0.55
             self.rate = 0.05
+            min_wheel_vel = -7
+            max_wheel_vel = 7
 
         if robot == 'warthog-wheel':
             self.steady_state_step_len = 140
             self.wheel_radius = 0.3
             self.baseline = 1.1652
             self.rate = 0.05
+            min_wheel_vel = -14
+            # min_wheel_vel = -5
+            max_wheel_vel = 14
 
         if robot == 'warthog-track':
             self.steady_state_step_len = 140
-            self.wheel_radius = 0.175
+            self.wheel_radius = 0.3
             self.baseline = 1.1652
             self.rate = 0.05
+            min_wheel_vel = -14
+            # min_wheel_vel = -5
+            max_wheel_vel = 14
 
         if robot == 'marmotte':
             self.steady_state_step_len = 140
@@ -42,15 +49,18 @@ class SlipDatasetParser:
             self.training_horizon = 2
             self.calib_step_time = 6
             self.rate = 0.05
+            min_wheel_vel = -10
+            # min_wheel_vel = -5
+            max_wheel_vel = 10
 
         self.ideal_diff_drive = Ideal_diff_drive(self.wheel_radius, self.baseline, self.timestep)
         self.k = np.array([self.wheel_radius, self.baseline])
 
         bounded_powertrain_left_params = np.load(powertrain_model_params_path + 'powertrain_training_left.npy')
-        self.bounded_powertrain_left = Bounded_powertrain(-10, 10, bounded_powertrain_left_params[0],
+        self.bounded_powertrain_left = Bounded_powertrain(min_wheel_vel, max_wheel_vel, bounded_powertrain_left_params[0],
                                                           bounded_powertrain_left_params[1], self.timestep)
         bounded_powertrain_right_params = np.load(powertrain_model_params_path + 'powertrain_training_right.npy')
-        self.bounded_powertrain_right = Bounded_powertrain(-10, 10, bounded_powertrain_right_params[0],
+        self.bounded_powertrain_right = Bounded_powertrain(min_wheel_vel, max_wheel_vel, bounded_powertrain_right_params[0],
                                                           bounded_powertrain_right_params[1], self.timestep)
 
         cmd_left_str_list = []
@@ -70,6 +80,10 @@ class SlipDatasetParser:
         self.cmd_right_vels_array = self.data[cmd_right_str_list].to_numpy()
         self.encoder_left_vels_array = self.data[encoder_left_str_list].to_numpy()
         self.encoder_right_vels_array = self.data[encoder_right_str_list].to_numpy()
+        self.bounded_powertrain_left.min_vel = np.min(self.encoder_left_vels_array)
+        self.bounded_powertrain_left.max_vel = np.max(self.encoder_left_vels_array)
+        self.bounded_powertrain_right.min_vel = np.min(self.encoder_right_vels_array)
+        self.bounded_powertrain_right.max_vel = np.max(self.encoder_right_vels_array)
 
         icp_x_str_list = []
         icp_y_str_list = []
@@ -111,8 +125,8 @@ class SlipDatasetParser:
         self.transitory_right_vels_array[0, :] = self.cmd_right_vels_array[0, :]
         for i in range(1, self.n_horizons):
             if transitory_state_mask[i] == 1:
-                self.transitory_left_vels_array[i, 0] = self.encoder_left_vels_array[i-1, -1]
-                self.transitory_right_vels_array[i, 0] = self.encoder_right_vels_array[i-1, -1]
+                self.transitory_left_vels_array[i, 0] = self.encoder_left_vels_array[i, 0]
+                self.transitory_right_vels_array[i, 0] = self.encoder_right_vels_array[i, 0]
                 cmd_elapsed_time = 0
                 for j in range(1, self.cmd_right_vels_array.shape[1]):
                     self.transitory_left_vels_array[i, j] = self.bounded_powertrain_left.compute_bounded_wheel_vels(self.cmd_left_vels_array[i, j],
@@ -124,8 +138,8 @@ class SlipDatasetParser:
                         cmd_elapsed_time)
                     cmd_elapsed_time += self.timestep
             else:
-                self.transitory_left_vels_array[i, :] = self.cmd_left_vels_array[i, :]
-                self.transitory_right_vels_array[i, :] = self.cmd_right_vels_array[i, :]
+                self.transitory_left_vels_array[i, :] = np.clip(self.cmd_left_vels_array[i, :], self.bounded_powertrain_left.min_vel, self.bounded_powertrain_left.max_vel)
+                self.transitory_right_vels_array[i, :] = np.clip(self.cmd_right_vels_array[i, :], self.bounded_powertrain_right.min_vel, self.bounded_powertrain_right.max_vel)
 
     def compute_transitory_body_vels(self):
         self.idd_body_vels_x_array = np.zeros((self.cmd_left_vels_array.shape[0], self.cmd_left_vels_array.shape[1]))
@@ -155,13 +169,14 @@ class SlipDatasetParser:
         return(unwrapped_trajectory)
 
     def icp_traj_as_smoothed_spline(self, window_id):
-        icp_x_spline = make_smoothing_spline(self.step_time_vector, self.icp_x_array[window_id, :])
-        icp_y_spline = make_smoothing_spline(self.step_time_vector, self.icp_y_array[window_id, :])
+        lambda_param = 0.8
+        icp_x_spline = make_smoothing_spline(self.step_time_vector, self.icp_x_array[window_id, :], lam=lambda_param)
+        icp_y_spline = make_smoothing_spline(self.step_time_vector, self.icp_y_array[window_id, :], lam=lambda_param)
         # icp_z_spline = make_smoothing_spline(self.step_time_vector, self.icp_z_array[window_id, :])
         # icp_roll_spline = make_smoothing_spline(self.step_time_vector, self.icp_roll_array[window_id, :])
         # icp_pitch_spline = make_smoothing_spline(self.step_time_vector, self.icp_pitch_array[window_id, :])
         # TODO : implement smoothing spline
-        icp_yaw_spline = make_smoothing_spline(self.step_time_vector, self.unwrap_trajectory(self.icp_yaw_array[window_id, :]))
+        icp_yaw_spline = make_smoothing_spline(self.step_time_vector, self.unwrap_trajectory(self.icp_yaw_array[window_id, :]), lam=lambda_param)
 
         return np.array([icp_x_spline, icp_y_spline, icp_yaw_spline])
 
@@ -180,7 +195,29 @@ class SlipDatasetParser:
             # icp_roll_interpolated_array[i, :] = spline_array[3](self.step_time_vector)
             # icp_pitch_interpolated_array[i, :] = spline_array[4](self.step_time_vector)
             self.icp_yaw_interpolated_array[i, :] = spline_array[2](self.step_time_vector)
-    # TODO: define icp single-step via spline
+
+    def correct_interpolated_smoothed_icp_states_yaw(self):
+        correction_rotmat = np.eye(2)
+        self.icp_x_corrected_interpolated_array = np.zeros(self.icp_x_interpolated_array.shape)
+        self.icp_y_corrected_interpolated_array = np.zeros(self.icp_y_interpolated_array.shape)
+        for i in range(0, self.n_horizons):
+            yaw_offset = np.arctan2(self.icp_x_interpolated_array[i, 5], self.icp_y_interpolated_array[i, 5])
+            if yaw_offset < 0 and yaw_offset > -np.pi/2:
+                correction_yaw_angle = np.pi/2 + yaw_offset
+            if yaw_offset <= -np.pi/2:
+                correction_yaw_angle = np.pi/2 + yaw_offset
+            if yaw_offset >= 0 and yaw_offset < np.pi/2:
+                correction_yaw_angle = -(np.pi/2 - yaw_offset)
+            if yaw_offset >= np.pi/2:
+                correction_yaw_angle = -(np.pi/2 - yaw_offset)
+            # else:
+            #     correction_yaw_angle = yaw_offset
+            yaw_to_rotmat2d(correction_rotmat, correction_yaw_angle)
+            for j in range(0, self.icp_x_array.shape[1]):
+                offset_position = np.array([self.icp_x_interpolated_array[i,j], self.icp_y_interpolated_array[i,j]]).reshape(2,1)
+                corrected_position = correction_rotmat @ offset_position
+                self.icp_x_corrected_interpolated_array[i,j] = corrected_position[0]
+                self.icp_y_corrected_interpolated_array[i,j] = corrected_position[1]
 
     def compute_icp_single_step_vels(self):
         icp_body_to_world_rotmat_2d = np.eye(2)
@@ -215,9 +252,6 @@ class SlipDatasetParser:
             # self.icp_yaw_single_step_vels_array[i, -1] = self.icp_yaw_single_step_vels_array[i, -2]
             self.icp_yaw_single_step_vels_array[i, :] = self.imu_yaw_array[i, :]
 
-            
-
-
     # TODO: compute body_vel_disturptions
 
     def compute_body_vel_disturptions(self):
@@ -234,12 +268,14 @@ class SlipDatasetParser:
         self.compute_transitory_vels()
         self.compute_transitory_body_vels()
         self.compute_interpolated_smoothed_icp_states()
+        self.correct_interpolated_smoothed_icp_states_yaw()
         self.compute_icp_single_step_vels()
         self.compute_body_vel_disturptions()
 
         new_data_array = np.concatenate((self.transitory_left_vels_array, self.transitory_right_vels_array,
                                          self.idd_body_vels_x_array, self.idd_body_vels_y_array, self.idd_body_vels_yaw_array,
                                               self.icp_x_interpolated_array, self.icp_y_interpolated_array, self.icp_yaw_interpolated_array,
+                                              self.icp_x_corrected_interpolated_array, self.icp_y_corrected_interpolated_array,
                                               self.icp_x_single_step_vels_array, self.icp_y_single_step_vels_array, self.icp_yaw_single_step_vels_array,
                                               self.body_vel_disturption_x_array, self.body_vel_disturption_y_array, self.body_vel_disturption_yaw_array),
                                              axis=1)
@@ -283,6 +319,16 @@ class SlipDatasetParser:
         new_cols.extend(str_icp_interpolated_x_list)
         new_cols.extend(str_icp_interpolated_y_list)
         new_cols.extend(str_icp_interpolated_yaw_list)
+
+        str_icp_corrected_interpolated_x_list = []
+        str_icp_corrected_interpolated_y_list = []
+        for i in range(0, 40):
+            str_icp_corrected_interpolated_x_i = 'icp_corrected_interpolated_x_' + str(i)
+            str_icp_corrected_interpolated_y_i = 'icp_corrected_interpolated_y_' + str(i)
+            str_icp_corrected_interpolated_x_list.append(str_icp_corrected_interpolated_x_i)
+            str_icp_corrected_interpolated_y_list.append(str_icp_corrected_interpolated_y_i)
+        new_cols.extend(str_icp_corrected_interpolated_x_list)
+        new_cols.extend(str_icp_corrected_interpolated_y_list)
 
         str_icp_vel_x_list = []
         str_icp_vel_y_list = []

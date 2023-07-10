@@ -39,6 +39,9 @@ class Ideal_diff_drive:
     def compute_body_vel(self, input):
         return self.jacobian @ input
 
+    def compute_body_vel_horizon(self, horizon_input):
+        return self.jacobian @ horizon_input
+
     def compute_wheel_vels(self, body_vel):
         return self.inv_jacobian @ body_vel
 
@@ -60,6 +63,19 @@ class Ideal_diff_drive:
         # print(self.body_vel_world_3d)
 
         return init_state + self.body_vel_world_3d * self.dt
+
+    def predict_2d(self, init_state, input):
+        """
+        :param init_state: initial state array [x, y, z, roll, pitch, yaw]
+        :param input: input array [omega_l, omega_r]
+        :return: next_state
+        """
+
+        yaw_to_rotmat2d(self.rotation_body_to_world, init_state[-1])
+        body_vel = self.jacobian_3x3 @ input
+        self.body_vel_world_2d[:2] = self.rotation_body_to_world @ body_vel[:2]
+        self.body_vel_world_2d[2] = body_vel[2]
+        return init_state + self.body_vel_world_2d * self.dt
 
     def adjust_motion_params(self, params):
         return None

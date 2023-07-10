@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+
 import numpy as np
 import pandas as pd
 
@@ -26,12 +26,14 @@ class DatasetParser:
             self.steady_state_step_len = 140
             self.wheel_radius = 0.3
             self.baseline = 1.1652
+            self.calib_step_time = 6
             self.rate = 0.05
 
         if robot == 'warthog-track':
             self.steady_state_step_len = 140
-            self.wheel_radius = 0.175
+            self.wheel_radius = 0.3
             self.baseline = 1.1652
+            self.calib_step_time = 6
             self.rate = 0.05
 
         if robot == 'marmotte':
@@ -113,6 +115,10 @@ class DatasetParser:
         self.imu_roll = run['imu_x'].to_numpy().astype('float')
         self.imu_yaw = run['imu_z'].to_numpy().astype('float')
         self.imu_euler = np.column_stack((self.imu_roll, self.imu_pitch, self.imu_yaw))
+
+        self.imu_acceleration_x = run['imu_acceleration_x'].to_numpy().astype('float')
+        self.imu_acceleration_y = run['imu_acceleration_y'].to_numpy().astype('float')
+        self.imu_acceleration_z = run['imu_acceleration_z'].to_numpy().astype('float')
 
         self.icp_quat = np.column_stack((self.icp_quat_x, self.icp_quat_y,
                                     self.icp_quat_z, self.icp_quat_w))
@@ -236,17 +242,18 @@ class DatasetParser:
                 else:
                     print('test')
 
-
     def concatenate_into_full_dataframe(self):
         cols = ['timestamp', 'imu_roll_vel', 'imu_pitch_vel', 'imu_yaw_vel', 'cmd_left', 'cmd_right',
                 'icp_x', 'icp_y', 'icp_z', 'icp_roll', 'icp_pitch', 'icp_yaw', 'icp_vx', 'icp_vy', 'icp_omega',
                 'encoder_wheel_left_vel', 'encoder_wheel_right_vel', 'diff_drive_vels_x', 'diff_drive_vels_y', 'diff_drive_vels_omega',
-                'calib_step']
+                'calib_step', 'imu_acceleration_x', 'imu_acceleration_y', 'imu_acceleration_z']
         self.parsed_dataset = np.concatenate((self.timestamp.reshape(self.n_points, 1), self.imu_euler,
                                               self.cmd_wheel_vels,
                                               self.icp_states[:, 2:], self.icp_vels,
                                               self.wheel_left_vel.reshape(self.n_points, 1), self.wheel_right_vel.reshape(self.n_points, 1),
-                                              self.diff_drive_vels, self.calib_step.reshape(self.n_points, 1),), axis=1)
+                                              self.diff_drive_vels, self.calib_step.reshape(self.n_points, 1),
+                                              self.imu_acceleration_x.reshape(self.n_points, 1), self.imu_acceleration_y.reshape(self.n_points, 1),
+                                              self.imu_acceleration_z.reshape(self.n_points, 1)), axis=1)
 
         self.parsed_dataset_df = pd.DataFrame(self.parsed_dataset, columns=cols)
 
@@ -354,7 +361,7 @@ class DatasetParser:
         timesteps_per_horizon = int(self.training_horizon / self.rate)
 
         torch_input_array = np.zeros((len(self.horizon_starts),
-                                      12 + timesteps_per_horizon * 4 + timesteps_per_horizon * 6 + timesteps_per_horizon))  # [icp_x, icp_y, icp_yaw, vx0, vomega0, vx1, vomega1, vx2, vomega2, vx3, vomega3]
+                                      12 + timesteps_per_horizon * 4 + timesteps_per_horizon * 6 + timesteps_per_horizon + 3*timesteps_per_horizon))  # [icp_x, icp_y, icp_yaw, vx0, vomega0, vx1, vomega1, vx2, vomega2, vx3, vomega3]
         torch_output_array = np.zeros((len(self.horizon_starts), 6))  # [icp_x, icp_y, icp_yaw]
 
         for i in range(0, len(self.horizon_starts)):
@@ -363,28 +370,35 @@ class DatasetParser:
             horizon_start = self.horizon_starts[i]
             horizon_end = self.horizon_ends[i]
             # torch_input_array[i, :6] = self.parsed_dataset[horizon_start, 6:12]  # init_state
-            euler_pose_to_transform(self.parsed_dataset[horizon_start, 9:12], self.parsed_dataset[horizon_start, 6:9], init_state_tf)
+            euler_pose_to_transform(np.mean(self.parsed_dataset[horizon_start:horizon_start+5, 9:12], axis=0), self.parsed_dataset[horizon_start, 6:9],
+                                    init_state_tf)
             init_state_tf_inv = np.linalg.inv(init_state_tf)
             torch_input_array[i, :6] = np.zeros(6)  # init_state set at 0
             torch_input_array[i, 6] = self.parsed_dataset[horizon_start, 20]  # calib_step
             # torch_input_array[i, 7] = self.parsed_dataset[horizon_start, 4]  # cmd_vx
             # torch_input_array[i, 8] = self.parsed_dataset[horizon_start, 5]  # cmd_omega
-            for j in range(0, timesteps_per_horizon): # adding wheel commands
+            for j in range(0, timesteps_per_horizon):  # adding wheel commands
                 torch_input_array[i, 7 + j * 2] = self.parsed_dataset[horizon_start + j, 4]
                 torch_input_array[i, 7 + j * 2 + 1] = self.parsed_dataset[horizon_start + j, 5]
-            for j in range(0, timesteps_per_horizon): # adding wheel encoder measurements
+            for j in range(0, timesteps_per_horizon):  # adding wheel encoder measurements
                 torch_input_array[i, 87 + j * 2] = self.parsed_dataset[horizon_start + j, 15]
                 torch_input_array[i, 87 + j * 2 + 1] = self.parsed_dataset[horizon_start + j, 16]
-            for j in range(0, timesteps_per_horizon): # adding intermediary icp measurements
+            for j in range(0, timesteps_per_horizon):  # adding intermediary icp measurements
                 homogeonous_state_position[:3] = self.parsed_dataset[horizon_start + j, 6:9]
                 init_state_transformed_pose = init_state_tf_inv @ homogeonous_state_position
                 torch_input_array[i, 167 + j * 6:167 + j * 6 + 3] = init_state_transformed_pose[:3]
-                torch_input_array[i, 167 + 3 + j * 6:167 + 6 + j * 6] = self.parsed_dataset[horizon_start + j, 9:12] - self.parsed_dataset[horizon_start, 9:12]
+                torch_input_array[i, 167 + 3 + j * 6:167 + 6 + j * 6] = self.parsed_dataset[horizon_start + j,
+                                                                        9:12] - self.parsed_dataset[horizon_start, 9:12]
                 torch_input_array[i, 3] = wrap2pi(torch_input_array[i, 3])
                 torch_input_array[i, 4] = wrap2pi(torch_input_array[i, 4])
                 torch_input_array[i, 5] = wrap2pi(torch_input_array[i, 5])
             for j in range(0, timesteps_per_horizon): # adding wheel commands
-                torch_input_array[i, 407 + j] = -self.parsed_dataset[horizon_start + j, 3] # imu yaw rate
+                if self.robot == 'marmotte':
+                    torch_input_array[i, 407 + j] = -self.parsed_dataset[horizon_start + j, 3] # imu yaw rate
+                if self.robot == 'husky':
+                    torch_input_array[i, 407 + j] = self.parsed_dataset[horizon_start + j, 3]  # imu yaw rate
+                if self.robot == 'warthog-track' or self.robot == 'warthog-wheel':
+                    torch_input_array[i, 407 + j] = self.parsed_dataset[horizon_start + j, 3]  # imu yaw rate
             # if torch_input_array[i, 8] <= 0:  # and torch_input_array[i, 8] <= 0:
             #     torch_input_array[i, 9] = 0
             # else:
@@ -393,6 +407,7 @@ class DatasetParser:
             # torch_input_array[i, 9] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 17])  # encoder_vx
             # torch_input_array[i, 10] = np.mean(
             #     self.parsed_dataset[horizon_start:horizon_end, 19])  # encoder_omega
+
             torch_input_array[i, 447] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 12])  # icp_vx
             torch_input_array[i, 448] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 13])  # icp_vy
             torch_input_array[i, 449] = np.mean(self.parsed_dataset[horizon_start:horizon_end, 14])  # icp_omega
@@ -406,6 +421,12 @@ class DatasetParser:
                 torch_input_array[i, 451] = True  # transitory_mask
             else:
                 torch_input_array[i, 451] = False  # transitory_mask
+
+            for j in range(0, timesteps_per_horizon):  # adding imu accelerations
+                torch_input_array[i, 452 + j * 3] = self.parsed_dataset[horizon_start + j, -3]
+                torch_input_array[i, 452 + j * 3 + 1] = self.parsed_dataset[horizon_start + j, -2]
+                torch_input_array[i, 452 + j * 3 + 2] = self.parsed_dataset[horizon_start + j, -1]
+
 
             # torch_output_array[i, :] = self.parsed_dataset[horizon_end, 6:12] # absolute final pose
             homogeonous_state_position[:3] = self.parsed_dataset[horizon_end, 6:9]
@@ -455,6 +476,13 @@ class DatasetParser:
         cols.append('icp_omega')
         cols.append('steady_state_mask')
         cols.append('transitory_state_mask')
+        for i in range(0, timesteps_per_horizon):
+            str_imu_accel_x_i = 'imu_acceleration_x_' + str(i)
+            cols.append(str_imu_accel_x_i)
+            str_imu_accel_y_i = 'imu_acceleration_y_' + str(i)
+            cols.append(str_imu_accel_y_i)
+            str_imu_accel_z_i = 'imu_acceleration_z_' + str(i)
+            cols.append(str_imu_accel_z_i)
         cols.append('gt_icp_x')
         cols.append('gt_icp_y')
         cols.append('gt_icp_z')
