@@ -179,30 +179,40 @@ width = 3.402
 height = width / 1.3
 plt.close('all')
 
-fig, ax = plt.subplots(1, 1, dpi=600)
+# fig, ax = plt.subplots(1, 1, dpi=150)
+fig, ax = plt.subplots(1, 1, dpi=150)
 fig.set_size_inches(width, height)
 # fig.subplots_adjust(left=.1, bottom=0.07, right=.995, top=.98)
 fig.subplots_adjust(top=0.99, bottom=0.32, right=.99, left=0.13)
 
+
 # ... Grid .................................................................................................
 # ax.grid(which='major', color='gray', linestyle='--', alpha=0.15)
-ax.grid(which='major', color='gray', linestyle=(24, (24, 8)), linewidth=0.25, alpha=0.75)
-# ax.grid(which='minor', color='#CCCCCC', linestyle='--', alpha=0.5)
+# ax.grid(which='minor', color='gray', linestyle='--', alpha=0.5)
+# ax.grid(which='major',
+#         # color='gray',
+#         color='lightgray',
+#         linestyle=(24, (24, 8)), linewidth=0.25,
+#         # alpha=0.75
+#         alpha=0.7
+#         )
 
 # ... Constant .............................................................................................
 alpha = 0.3
 
 alpha_naive = 0.11
 # red_patern = "|||||||"
-naive_patern = "------"
+naive_patern = "------"         # Version 1
+naive_patern = ""
 
 # alpha_red = 0.15
 # alpha_red = 0.25
 # red_patern = "||||||"
 alpha_red = 0.11
 # red_patern = "||||||||"
-red_patern = "++++"
 # red_patern = "/////////"
+red_patern = "++++"             # Version 1
+red_patern = ""
 
 # dots_size = 1                 # original fig 1
 # alpha_dots = 0.01             # original fig 1
@@ -210,7 +220,9 @@ red_patern = "++++"
 # dots_size = 0.75
 # alpha_dots = 0.4
 dots_size = 0.45
-alpha_dots = 0.6
+alpha_dots = 0.5
+# dots_size = 0.35
+# alpha_dots = 0.4
 dots_edgecolors = 'none'
 
 minimum_linear_vel_positive = 0
@@ -283,7 +295,6 @@ ax.fill_between(human_angular_vel_linspace_positive, human_maximum_linear_vel_po
                 color='C3',
                 hatch=red_patern
                 )
-
 
 # ::: characterized input space ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 char_angular_vel_linspace_negative = np.linspace(maximum_angular_vel_negative, 0, int(num_points / 2)).flatten()
@@ -387,52 +398,73 @@ for i in range(steady_state_icp_body_vel_x_tracks.shape[0]):
 #       alpha=alpha_dots,
 #       )
 
+# ::: Add dougnut calib aerial imagerie ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# from PIL import Image
+# img_aerial_gravel = np.asarray(Image.open("./aerial_photo/dougnut_calib_warthog_gravel.png"))
+#
+# ax_li = fig.add_axes([0.8, 0.8, 0.2, 0.2], anchor='NE', zorder=-1)
+# ax_li.imshow(img_aerial_gravel)
+# ax_li.axis('off')
+
+
 # === Show =================================================================================================
 
 legend_elements = [
         Rectangle((0, 0), width=5, height=3,
-                  # facecolor="grey",
-                  facecolor="none",
                   label='Naive', linestyle='solid',
-                  # edgecolor='k',
-                  edgecolor='grey',
-                  hatch=naive_patern,
-                  alpha=.4
+                  alpha=0.4,
+                  ##...Full version...
+                  edgecolor='k',
+                  facecolor="grey",
+                  ##...Pattern version...
+                  # edgecolor='grey',
+                  # facecolor="none",
+                  # hatch=naive_patern,
                   ),
         Rectangle((0, 0), width=5, height=3,
-                  facecolor="none",
-                  # facecolor="white",
-                  # facecolor="C3",
                   label='Human', linestyle='solid',
-                  # edgecolor='k',
-                  edgecolor='C3',
-                  hatch=red_patern,
-                  alpha=.5
+                  ##...Full version...
+                  alpha=0.9,
+                  edgecolor='k',
+                  facecolor="C3",
+                  ##...Pattern version...
+                  # alpha=0.7,
+                  # edgecolor='C3',
+                  # facecolor="none",
+                  # hatch=red_patern,
                   ),
         Rectangle((0, 0), width=5, height=3, facecolor="C1", label='Powertrain', linestyle='solid',
-                  # edgecolor='k'
-                  edgecolor='C1'
+                  edgecolor='k'
+                  # edgecolor='C1'
                   ),
         # Rectangle((0,0), width=5, height=3, facecolor="gray", label='Human', linestyle='solid',
         #         # edgecolor='k'
-                # edgecolor='gray'
+        # edgecolor='gray'
         #                 ),
         #  Rectangle((0,0), width=5, height=3, facecolor="C3", label='Doughnut', linestyle='solid',
         #         #  edgecolor='k'
-                #  edgecolor='C3'
+        #  edgecolor='C3'
         #         ),
         Rectangle((0, 0), width=5, height=3, facecolor="green", label='Gravel', linestyle='solid',
-                  # edgecolor='k'
-                  edgecolor='green'
+                  edgecolor='k'
+                  # edgecolor='green'
                   ),
         Rectangle((0, 0), width=5, height=3, facecolor="C0", label='Snow', linestyle='solid',
-                  # edgecolor='k'
-                  edgecolor='C0'
+                  edgecolor='k'
+                  # edgecolor='C0'
                   ), ]
 ax.set_xlabel("Commanded angular velocity [rad/s]")
 ax.set_ylabel("Commanded linear velocity [m/s]")
 
-fig.legend(handles=legend_elements, loc="lower center", bbox_to_anchor=(0.5, -0.04), ncol=3)
-# fig.savefig("fig_1_upgrade.pdf", dpi=100)
+fig.legend(handles=legend_elements, loc="lower center",
+           # bbox_to_anchor=(0.5, -0.019),
+           bbox_to_anchor=(0.5, 0.03),
+           ncol=5,
+           columnspacing=1.0,
+           handletextpad=0.6,
+           handlelength=1.25,
+           prop={'size': 'small'})
+# fig.savefig("fig_1_upgrade.pdf", dpi='figure') # Does not render face pattern
 fig.savefig("fig_1_upgrade.jpg", dpi='figure')
+fig.savefig("fig_1_upgrade_600dpi.png", dpi=600)
 plt.show()
