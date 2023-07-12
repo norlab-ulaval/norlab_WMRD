@@ -176,15 +176,16 @@ mpl.rcParams['lines.dashed_pattern'] = [2, 2]
 mpl.rcParams['lines.linewidth'] = 1.0
 
 width = 3.402
-height = width / 1.3
+# height = width / 1.3
+height = width / 1.1
 plt.close('all')
 
-# fig, ax = plt.subplots(1, 1, dpi=150)
-fig, ax = plt.subplots(1, 1, dpi=150)
+# fig, ax = plt.subplots(1, 1, dpi=150)     # Original
+fig, ax = plt.subplots(1, 1, dpi=300)
 fig.set_size_inches(width, height)
 # fig.subplots_adjust(left=.1, bottom=0.07, right=.995, top=.98)
-fig.subplots_adjust(top=0.99, bottom=0.32, right=.99, left=0.13)
-
+# fig.subplots_adjust(top=0.99, bottom=0.32, right=.99, left=0.13)
+fig.subplots_adjust(top=0.99, bottom=0.42, right=.99, left=0.13)
 
 # ... Grid .................................................................................................
 # ax.grid(which='major', color='gray', linestyle='--', alpha=0.15)
@@ -197,23 +198,16 @@ fig.subplots_adjust(top=0.99, bottom=0.32, right=.99, left=0.13)
 #         alpha=0.7
 #         )
 
-# ... Constant .............................................................................................
+# --- Plot configuration -----------------------------------------------------------------------------------
+
+# ... Global config.........................................................................................
 alpha = 0.3
 
-alpha_naive = 0.11
-# red_patern = "|||||||"
-naive_patern = "------"         # Version 1
-naive_patern = ""
+num_points = 100
+# line_width = 1                  # original fig 1
+line_width = 0.25
 
-# alpha_red = 0.15
-# alpha_red = 0.25
-# red_patern = "||||||"
-alpha_red = 0.11
-# red_patern = "||||||||"
-# red_patern = "/////////"
-red_patern = "++++"             # Version 1
-red_patern = ""
-
+# ... Dots config ..........................................................................................
 # dots_size = 1                 # original fig 1
 # alpha_dots = 0.01             # original fig 1
 # dots_edgecolors = 'face'      # original fig 1
@@ -225,6 +219,37 @@ alpha_dots = 0.5
 # alpha_dots = 0.4
 dots_edgecolors = 'none'
 
+# ... Naive config..........................................................................................
+alpha_naive = 0.11
+
+# naive_edge_color = 'grey'
+# naive_patern = "------"  # Version 1
+naive_patern = ""
+
+naive_edge_color = 'darkgray'
+# naive_edge = (0, (10, 10))
+naive_edge = (0, (16, 8, 6, 8))
+naive_line_width = line_width * 1.6
+
+# ... Human config .........................................................................................
+# alpha_red = 0.15
+# red_patern = "||||||"
+# red_patern = "||||||||"
+# red_patern = "/////////"
+
+# alpha_red = 0.25
+# red_patern = "++++"             # Version 1
+
+# alpha_red = 0.11
+red_patern = ""
+
+alpha_red = 0.16
+# human_edge = (0, (6, 6))
+# human_edge = (0, (10, 10))
+human_edge = naive_edge
+human_line_width = naive_line_width
+
+# ... Plot boundaries ......................................................................................
 minimum_linear_vel_positive = 0
 minimum_linear_vel_negative = 0
 minimum_angular_vel_positive = 0
@@ -251,19 +276,32 @@ x_max = 4
 y_min = -5
 y_max = 5
 
-num_points = 100
-# line_width = 1                  # original fig 1
-line_width = 0.25
-
+# === Naive ================================================================================================
 cmd_angular_vel_linspace = np.linspace(x_min, x_max, num_points)
 cmd_linear_max_vel_linspace = np.linspace(y_max, y_max, num_points)
 cmd_linear_min_vel_linspace = np.linspace(y_min, y_min, num_points)
 
 # ... plot initial input space .............................................................................
-ax.plot(cmd_angular_vel_linspace, cmd_linear_min_vel_linspace, color='grey', lw=line_width, label='Uncharacterized')
-ax.plot(cmd_angular_vel_linspace, cmd_linear_max_vel_linspace, color='grey', lw=line_width)
-ax.vlines(x_min, y_min, y_max, color='grey', lw=line_width)
-ax.vlines(x_max, y_min, y_max, color='grey', lw=line_width)
+ax.plot(cmd_angular_vel_linspace, cmd_linear_min_vel_linspace,
+        color=naive_edge_color,
+        lw=naive_line_width, label='Uncharacterized',
+        linestyle=naive_edge,
+        )
+ax.plot(cmd_angular_vel_linspace, cmd_linear_max_vel_linspace,
+        color=naive_edge_color,
+        lw=naive_line_width,
+        linestyle=naive_edge,
+        )
+ax.vlines(x_min, y_min, y_max,
+          color=naive_edge_color,
+          lw=naive_line_width,
+          linestyle=naive_edge,
+          )
+ax.vlines(x_max, y_min, y_max,
+          color=naive_edge_color,
+          lw=naive_line_width,
+          linestyle=naive_edge,
+          )
 ax.fill_between(cmd_angular_vel_linspace, cmd_linear_max_vel_linspace, y2=cmd_linear_min_vel_linspace,
                 alpha=alpha_naive,
                 color='grey',
@@ -279,12 +317,20 @@ human_q1_vel_linspace = np.linspace(human_maximum_linear_vel_positive, 0, int(nu
 human_q2_vel_linspace = np.linspace(0, human_maximum_linear_vel_positive, int(num_points / 2)).flatten()
 
 # ... plot human ...........................................................................................
-q1_human_input_space = ax.plot(human_angular_vel_linspace_negative, human_q1_vel_linspace, color='C3', lw=line_width,
-                               label='Characterized')
-q2_human_input_space = ax.plot(human_angular_vel_linspace_positive, human_q2_vel_linspace, color='C3', lw=line_width)
-q2_human_input_space = ax.plot(human_angular_vel_linspace_all,
+q1_human_input_space = ax.plot(human_angular_vel_linspace_negative, human_q1_vel_linspace, color='C3',
+                               lw=human_line_width,
+                               label='Characterized',
+                               linestyle=human_edge,
+                               )
+q2_human_input_space = ax.plot(human_angular_vel_linspace_positive, human_q2_vel_linspace, color='C3',
+                               lw=human_line_width,
+                               linestyle=human_edge,
+                               )
+q3_human_input_space = ax.plot(human_angular_vel_linspace_all,
                                np.full(int(num_points / 2), human_maximum_linear_vel_positive), color='C3',
-                               lw=line_width)
+                               lw=human_line_width,
+                               linestyle=human_edge,
+                               )
 ax.fill_between(human_angular_vel_linspace_negative, human_maximum_linear_vel_positive, y2=human_q1_vel_linspace,
                 alpha=alpha_red,
                 color='C3',
@@ -409,62 +455,102 @@ for i in range(steady_state_icp_body_vel_x_tracks.shape[0]):
 
 # === Show =================================================================================================
 
+# # ... Legend version 2 .....................................................................................
+# legend_elements = [
+#         Rectangle((0, 0), width=5, height=3,
+#                   label='Naive', linestyle='solid',
+#                   ##...Full version...
+#                   alpha=0.8,
+#                   edgecolor='k',
+#                   facecolor="lightgray",
+#                   ##...Pattern version...
+#                   # alpha=0.4,
+#                   # edgecolor='grey',
+#                   # facecolor="none",
+#                   # hatch=naive_patern,
+#                   ),
+#         Rectangle((0, 0), width=5, height=3,
+#                   label='Human', linestyle='solid',
+#                   ##...Full version...
+#                   alpha=0.8,
+#                   edgecolor='k',
+#                   facecolor="C3",
+#                   ##...Pattern version...
+#                   # alpha=0.7,
+#                   # edgecolor='C3',
+#                   # facecolor="none",
+#                   # hatch=red_patern,
+#                   ),
+#         Rectangle((0, 0), width=5, height=3, facecolor="C1", label='Powertrain', linestyle='solid',
+#                   edgecolor='k'
+#                   # edgecolor='C1'
+#                   ),
+#         # Rectangle((0,0), width=5, height=3, facecolor="gray", label='Human', linestyle='solid',
+#         #         # edgecolor='k'
+#         # edgecolor='gray'
+#         #                 ),
+#         #  Rectangle((0,0), width=5, height=3, facecolor="C3", label='Doughnut', linestyle='solid',
+#         #         #  edgecolor='k'
+#         #  edgecolor='C3'
+#         #         ),
+#         Rectangle((0, 0), width=5, height=3, facecolor="green", label='Gravel', linestyle='solid',
+#                   edgecolor='k'
+#                   # edgecolor='green'
+#                   ),
+#         Rectangle((0, 0), width=5, height=3, facecolor="C0", label='Snow', linestyle='solid',
+#                   edgecolor='k'
+#                   # edgecolor='C0'
+#                   ), ]
+#
+# fig.legend(handles=legend_elements, loc="lower center",
+#            # bbox_to_anchor=(0.5, -0.019),
+#            bbox_to_anchor=(0.5, 0.03),
+#            ncol=5,
+#            columnspacing=1.0,
+#            handletextpad=0.6,
+#            handlelength=1.25,
+#            prop={ 'size': 'small' })
+
+# ... Legend version 3 .....................................................................................
 legend_elements = [
-        Rectangle((0, 0), width=5, height=3,
-                  label='Naive', linestyle='solid',
-                  alpha=0.4,
-                  ##...Full version...
-                  edgecolor='k',
-                  facecolor="grey",
-                  ##...Pattern version...
-                  # edgecolor='grey',
-                  # facecolor="none",
-                  # hatch=naive_patern,
+        Rectangle((0, 0), width=5, height=3, linestyle='solid', edgecolor='k', facecolor="lightgray", alpha=0.8,
+                  label='Naive',
                   ),
-        Rectangle((0, 0), width=5, height=3,
-                  label='Human', linestyle='solid',
-                  ##...Full version...
-                  alpha=0.9,
-                  edgecolor='k',
-                  facecolor="C3",
-                  ##...Pattern version...
-                  # alpha=0.7,
-                  # edgecolor='C3',
-                  # facecolor="none",
-                  # hatch=red_patern,
+        Rectangle((0, 0), width=5, height=3, facecolor="C1", linestyle='solid', edgecolor='k',
+                  label='Encoders',
                   ),
-        Rectangle((0, 0), width=5, height=3, facecolor="C1", label='Powertrain', linestyle='solid',
-                  edgecolor='k'
-                  # edgecolor='C1'
+        Rectangle((0, 0), width=5, height=3, facecolor="green", linestyle='solid', edgecolor='k',
+                  label='Gravel',
                   ),
-        # Rectangle((0,0), width=5, height=3, facecolor="gray", label='Human', linestyle='solid',
-        #         # edgecolor='k'
-        # edgecolor='gray'
-        #                 ),
-        #  Rectangle((0,0), width=5, height=3, facecolor="C3", label='Doughnut', linestyle='solid',
-        #         #  edgecolor='k'
-        #  edgecolor='C3'
-        #         ),
-        Rectangle((0, 0), width=5, height=3, facecolor="green", label='Gravel', linestyle='solid',
-                  edgecolor='k'
-                  # edgecolor='green'
+        Rectangle((0, 0), width=5, height=3, facecolor="C0", linestyle='solid', edgecolor='k',
+                  label='Snow',
                   ),
-        Rectangle((0, 0), width=5, height=3, facecolor="C0", label='Snow', linestyle='solid',
-                  edgecolor='k'
-                  # edgecolor='C0'
-                  ), ]
+        Rectangle((0, 0), width=5, height=3, linestyle='solid', edgecolor='k', facecolor="C3", alpha=0.8,
+                  label='Typical human driving',
+                  ),
+        ]
+
+legend_order = [
+        0,
+        3,
+        1,
+        2,
+        4,
+        ]
+
+fig.legend(handles=[legend_elements[idx] for idx in legend_order], loc="lower center",
+           bbox_to_anchor=(0.5, 0.07),
+           borderpad=0.5,
+           ncol=4,
+           columnspacing=0.5,
+           handletextpad=0.6,
+           handlelength=1.25,
+           prop={ 'size': 'small' })
+
 ax.set_xlabel("Commanded angular velocity [rad/s]")
 ax.set_ylabel("Commanded linear velocity [m/s]")
 
-fig.legend(handles=legend_elements, loc="lower center",
-           # bbox_to_anchor=(0.5, -0.019),
-           bbox_to_anchor=(0.5, 0.03),
-           ncol=5,
-           columnspacing=1.0,
-           handletextpad=0.6,
-           handlelength=1.25,
-           prop={'size': 'small'})
-# fig.savefig("fig_1_upgrade.pdf", dpi='figure') # Does not render face pattern
+# # fig.savefig("fig_1_upgrade.pdf", dpi='figure') # Does not render face pattern
 fig.savefig("fig_1_upgrade.jpg", dpi='figure')
-fig.savefig("fig_1_upgrade_600dpi.png", dpi=600)
+fig.savefig("fig_1_upgrade_600dpi.png", dpi=600, transparent=True)
 plt.show()
