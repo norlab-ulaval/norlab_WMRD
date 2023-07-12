@@ -550,7 +550,7 @@ fig.legend(handles=[legend_elements[idx] for idx in legend_order], loc="lower ce
 ax.set_xlabel("Commanded angular velocity [rad/s]")
 ax.set_ylabel("Commanded linear velocity [m/s]")
 
-# # fig.savefig("fig_1_upgrade.pdf", dpi='figure') # Does not render face pattern
+fig.savefig("fig_1_upgrade.pdf") # Does not render face pattern
 fig.savefig("fig_1_upgrade.jpg", dpi='figure')
 fig.savefig("fig_1_upgrade_600dpi.png", dpi=600, transparent=True)
 plt.show()
