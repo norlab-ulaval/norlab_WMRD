@@ -175,6 +175,7 @@ plt.rc('axes', labelsize=8)
 mpl.rcParams['lines.dashed_pattern'] = [2, 2]
 mpl.rcParams['lines.linewidth'] = 1.0
 
+
 width = 3.402
 # height = width / 1.3
 height = width / 1.1
@@ -186,6 +187,14 @@ fig.set_size_inches(width, height)
 # fig.subplots_adjust(left=.1, bottom=0.07, right=.995, top=.98)
 # fig.subplots_adjust(top=0.99, bottom=0.32, right=.99, left=0.13)
 fig.subplots_adjust(top=0.99, bottom=0.42, right=.99, left=0.13)
+
+
+# ... .Tick color setup ....................................................................................
+tick_color= 'darkgray'
+plt.setp(ax.get_xticklabels(), color=tick_color)
+plt.setp(ax.get_yticklabels(), color=tick_color)
+ax.tick_params(axis='both', which='both', color=tick_color)
+
 
 # ... Grid .................................................................................................
 # ax.grid(which='major', color='gray', linestyle='--', alpha=0.15)
@@ -214,8 +223,11 @@ line_width = 0.75
 # dots_edgecolors = 'face'      # original fig 1
 # dots_size = 0.75
 # alpha_dots = 0.4
-dots_size = 0.45
-alpha_dots = 0.5
+# dots_size = 0.45
+dots_size = 1.9
+# alpha_dots = 0.5
+# alpha_dots = 0.02
+alpha_dots = 0.0
 # dots_size = 0.35
 # alpha_dots = 0.4
 dots_edgecolors = 'none'
@@ -588,6 +600,7 @@ for i in range(steady_state_icp_body_vel_x_tracks.shape[0]):
 
 # ax.set_xlabel("Commanded angular velocity [rad/s]")
 # ax.set_ylabel("Commanded linear velocity [m/s]")
+
 
 fig.savefig("fig_2_upgrade.pdf", transparent=True)  # Does not render face pattern
 fig.savefig("fig_2_upgrade.jpg", dpi='figure')
