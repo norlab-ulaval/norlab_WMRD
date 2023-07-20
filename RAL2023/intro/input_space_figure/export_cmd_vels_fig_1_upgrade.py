@@ -302,7 +302,7 @@ ax.vlines(x_max, y_min, y_max,
           lw=naive_line_width,
           linestyle=naive_edge,
           )
-ax.fill_between(cmd_angular_vel_linspace, cmd_linear_max_vel_linspace, y2=cmd_linear_min_vel_linspace,
+ax.fill_between(cmd_angular_vel_linspace, cmd_linear_max_vel_linspace, y2=cmd_linear_min_vel_linspace,lw=0,
                 alpha=alpha_naive,
                 color='grey',
                 hatch=naive_patern,
@@ -331,12 +331,13 @@ q3_human_input_space = ax.plot(human_angular_vel_linspace_all,
                                lw=human_line_width,
                                linestyle=human_edge,
                                )
-ax.fill_between(human_angular_vel_linspace_negative, human_maximum_linear_vel_positive, y2=human_q1_vel_linspace,
+ax.fill_between(human_angular_vel_linspace_negative, human_maximum_linear_vel_positive, y2=human_q1_vel_linspace,lw=0,
                 alpha=alpha_red,
                 color='C3',
                 hatch=red_patern
                 )
 ax.fill_between(human_angular_vel_linspace_positive, human_maximum_linear_vel_positive, y2=human_q2_vel_linspace,
+                lw=0,
                 alpha=alpha_red,
                 color='C3',
                 hatch=red_patern
@@ -357,8 +358,10 @@ q2_char_input_space = ax.plot(char_angular_vel_linspace_positive, char_q2_vel_li
 q3_char_input_space = ax.plot(char_angular_vel_linspace_positive, char_q3_vel_linspace, color='C1', lw=line_width)
 q4_char_input_space = ax.plot(char_angular_vel_linspace_negative, char_q4_vel_linspace, color='C1', lw=line_width)
 ax.fill_between(char_angular_vel_linspace_negative, char_q1_vel_linspace, y2=char_q4_vel_linspace, alpha=alpha,
+                lw=0,
                 color='C1')
 ax.fill_between(char_angular_vel_linspace_positive, char_q2_vel_linspace, y2=char_q3_vel_linspace, alpha=alpha,
+                lw=0,
                 color='C1')
 
 # === characterized gravel =================================================================================
@@ -381,8 +384,10 @@ q3_gravel_input_space = ax.plot(gravel_angular_vel_linspace_positive, gravel_q3_
 q4_gravel_input_space = ax.plot(gravel_angular_vel_linspace_negative, gravel_q4_vel_linspace, color='green',
                                 lw=line_width)
 ax.fill_between(gravel_angular_vel_linspace_negative, gravel_q1_vel_linspace, y2=gravel_q4_vel_linspace, alpha=alpha,
+                lw=0,
                 color='green')
 ax.fill_between(gravel_angular_vel_linspace_positive, gravel_q2_vel_linspace, y2=gravel_q3_vel_linspace, alpha=alpha,
+                lw=0,
                 color='green')
 
 # === characterized snow ===================================================================================
@@ -400,8 +405,10 @@ q2_snow_input_space = ax.plot(snow_angular_vel_linspace_positive, snow_q2_vel_li
 q3_snow_input_space = ax.plot(snow_angular_vel_linspace_positive, snow_q3_vel_linspace, color='C0', lw=line_width)
 q4_snow_input_space = ax.plot(snow_angular_vel_linspace_negative, snow_q4_vel_linspace, color='C0', lw=line_width)
 ax.fill_between(snow_angular_vel_linspace_negative, snow_q1_vel_linspace, y2=snow_q4_vel_linspace, alpha=alpha,
+                lw=0,
                 color='C0')
 ax.fill_between(snow_angular_vel_linspace_positive, snow_q2_vel_linspace, y2=snow_q3_vel_linspace, alpha=alpha,
+                lw=0,
                 color='C0')
 
 # === icp velocities =======================================================================================
