@@ -190,7 +190,10 @@ fig.subplots_adjust(top=0.99, bottom=0.42, right=.99, left=0.13)
 
 
 # ... .Tick color setup ....................................................................................
-tick_color= 'darkgray'
+# tick_color= 'darkgray'
+# tick_color= 'lightgray'
+tick_color= 'none'
+# tick_color= 'white'
 plt.setp(ax.get_xticklabels(), color=tick_color)
 plt.setp(ax.get_yticklabels(), color=tick_color)
 ax.tick_params(axis='both', which='both', color=tick_color)
