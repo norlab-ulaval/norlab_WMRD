@@ -302,46 +302,46 @@ ax.vlines(x_max, y_min, y_max,
           lw=naive_line_width,
           linestyle=naive_edge,
           )
-ax.fill_between(cmd_angular_vel_linspace, cmd_linear_max_vel_linspace, y2=cmd_linear_min_vel_linspace,lw=0,
+ax.fill_between(cmd_angular_vel_linspace, cmd_linear_max_vel_linspace, y2=cmd_linear_min_vel_linspace, lw=0,
                 alpha=alpha_naive,
                 color='grey',
                 hatch=naive_patern,
                 )
 
-# === human ================================================================================================
-human_angular_vel_linspace_negative = np.linspace(human_maximum_angular_vel_negative, 0, int(num_points / 2)).flatten()
-human_angular_vel_linspace_positive = np.linspace(0, human_maximum_angular_vel_positive, int(num_points / 2)).flatten()
-human_angular_vel_linspace_all = np.linspace(human_maximum_angular_vel_negative, human_maximum_angular_vel_positive,
-                                             int(num_points / 2)).flatten()
-human_q1_vel_linspace = np.linspace(human_maximum_linear_vel_positive, 0, int(num_points / 2)).flatten()
-human_q2_vel_linspace = np.linspace(0, human_maximum_linear_vel_positive, int(num_points / 2)).flatten()
-
-# ... plot human ...........................................................................................
-q1_human_input_space = ax.plot(human_angular_vel_linspace_negative, human_q1_vel_linspace, color='C3',
-                               lw=human_line_width,
-                               label='Characterized',
-                               linestyle=human_edge,
-                               )
-q2_human_input_space = ax.plot(human_angular_vel_linspace_positive, human_q2_vel_linspace, color='C3',
-                               lw=human_line_width,
-                               linestyle=human_edge,
-                               )
-q3_human_input_space = ax.plot(human_angular_vel_linspace_all,
-                               np.full(int(num_points / 2), human_maximum_linear_vel_positive), color='C3',
-                               lw=human_line_width,
-                               linestyle=human_edge,
-                               )
-ax.fill_between(human_angular_vel_linspace_negative, human_maximum_linear_vel_positive, y2=human_q1_vel_linspace,lw=0,
-                alpha=alpha_red,
-                color='C3',
-                hatch=red_patern
-                )
-ax.fill_between(human_angular_vel_linspace_positive, human_maximum_linear_vel_positive, y2=human_q2_vel_linspace,
-                lw=0,
-                alpha=alpha_red,
-                color='C3',
-                hatch=red_patern
-                )
+## === human ================================================================================================
+# human_angular_vel_linspace_negative = np.linspace(human_maximum_angular_vel_negative, 0, int(num_points / 2)).flatten()
+# human_angular_vel_linspace_positive = np.linspace(0, human_maximum_angular_vel_positive, int(num_points / 2)).flatten()
+# human_angular_vel_linspace_all = np.linspace(human_maximum_angular_vel_negative, human_maximum_angular_vel_positive,
+#                                              int(num_points / 2)).flatten()
+# human_q1_vel_linspace = np.linspace(human_maximum_linear_vel_positive, 0, int(num_points / 2)).flatten()
+# human_q2_vel_linspace = np.linspace(0, human_maximum_linear_vel_positive, int(num_points / 2)).flatten()
+#
+# # ... plot human ...........................................................................................
+# q1_human_input_space = ax.plot(human_angular_vel_linspace_negative, human_q1_vel_linspace, color='C3',
+#                                lw=human_line_width,
+#                                label='Characterized',
+#                                linestyle=human_edge,
+#                                )
+# q2_human_input_space = ax.plot(human_angular_vel_linspace_positive, human_q2_vel_linspace, color='C3',
+#                                lw=human_line_width,
+#                                linestyle=human_edge,
+#                                )
+# q3_human_input_space = ax.plot(human_angular_vel_linspace_all,
+#                                np.full(int(num_points / 2), human_maximum_linear_vel_positive), color='C3',
+#                                lw=human_line_width,
+#                                linestyle=human_edge,
+#                                )
+# ax.fill_between(human_angular_vel_linspace_negative, human_maximum_linear_vel_positive, y2=human_q1_vel_linspace, lw=0,
+#                 alpha=alpha_red,
+#                 color='C3',
+#                 hatch=red_patern
+#                 )
+# ax.fill_between(human_angular_vel_linspace_positive, human_maximum_linear_vel_positive, y2=human_q2_vel_linspace,
+#                 lw=0,
+#                 alpha=alpha_red,
+#                 color='C3',
+#                 hatch=red_patern
+#                 )
 
 # ::: characterized input space ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 char_angular_vel_linspace_negative = np.linspace(maximum_angular_vel_negative, 0, int(num_points / 2)).flatten()
@@ -445,11 +445,14 @@ for i in range(steady_state_icp_body_vel_x_tracks.shape[0]):
                alpha=alpha_dots
                )
 
-# # === humand-commanded velocities ==========================================================================
-# ax.scatter(cmd_vel_omega, cmd_vel_x, s=dots_size, color="gray",
-#       edgecolors = dots_edgecolors,
-#       alpha=alpha_dots,
-#       )
+# === humand-commanded velocities ==========================================================================
+ax.scatter(cmd_vel_omega, cmd_vel_x,
+           s=dots_size,
+           color='C3',
+           edgecolors=dots_edgecolors,
+           # alpha=alpha_red,
+           alpha=alpha_dots,
+           )
 
 # ::: Add dougnut calib aerial imagerie ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # from PIL import Image
