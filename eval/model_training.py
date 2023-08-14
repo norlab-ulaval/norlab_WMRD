@@ -44,7 +44,7 @@ prediction_weights_2d[0,0] = prediction_weights_2d[1,1] = prediction_weights_2d[
 #import models
 dt = 0.05
 # r = 0.5/2
-robot = 'marmotte'
+robot = 'warthog-wheel'
 if robot == 'husky':
     r = 0.33/2
     baseline = 0.55

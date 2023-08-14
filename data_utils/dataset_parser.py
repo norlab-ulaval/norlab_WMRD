@@ -265,7 +265,7 @@ class DatasetParser:
         self.horizon_ends = []
 
         for i in range(1, self.n_points):
-            if self.calib_step[i] != self.calib_step[i-1]:
+            if self.calib_step[i] != self.calib_step[i-1] and not np.all(self.joy[i-120:i]):
                 elapsed_time_step = 0
                 j = i-1
                 window_2_switch = True

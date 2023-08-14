@@ -23,6 +23,8 @@ class SlipDatasetParser:
             self.rate = 0.05
             min_wheel_vel = -7
             max_wheel_vel = 7
+            self.software_lin_vel_limit = 1
+            self.software_ang_vel_limit = 1
 
         if robot == 'warthog-wheel':
             self.steady_state_step_len = 140
@@ -32,6 +34,8 @@ class SlipDatasetParser:
             min_wheel_vel = -14
             # min_wheel_vel = -5
             max_wheel_vel = 14
+            self.software_lin_vel_limit = 5
+            self.software_ang_vel_limit = 4
 
         if robot == 'warthog-track':
             self.steady_state_step_len = 140
@@ -41,6 +45,8 @@ class SlipDatasetParser:
             min_wheel_vel = -14
             # min_wheel_vel = -5
             max_wheel_vel = 14
+            self.software_lin_vel_limit = 5
+            self.software_ang_vel_limit = 4
 
         if robot == 'marmotte':
             self.steady_state_step_len = 140
@@ -52,6 +58,8 @@ class SlipDatasetParser:
             min_wheel_vel = -10
             # min_wheel_vel = -5
             max_wheel_vel = 10
+            self.software_lin_vel_limit = 1.2
+            self.software_ang_vel_limit = 10000
 
         self.ideal_diff_drive = Ideal_diff_drive(self.wheel_radius, self.baseline, self.timestep)
         self.k = np.array([self.wheel_radius, self.baseline])
@@ -150,8 +158,8 @@ class SlipDatasetParser:
             for j in range(0, self.cmd_left_vels_array.shape[1]):
                 input_array = np.array([self.transitory_left_vels_array[i, j], self.transitory_right_vels_array[i,j]])
                 body_vel_array = self.ideal_diff_drive.compute_body_vel(input_array)
-                self.idd_body_vels_x_array[i,j] = body_vel_array[0]
-                self.idd_body_vels_yaw_array[i,j] = body_vel_array[1]
+                self.idd_body_vels_x_array[i,j] = np.clip(body_vel_array[0], -self.software_lin_vel_limit, self.software_lin_vel_limit)
+                self.idd_body_vels_yaw_array[i,j] = np.clip(body_vel_array[1], -self.software_ang_vel_limit, self.software_ang_vel_limit)
 
     def unwrap_trajectory(self, trajectory):
         unwrapped_trajectory = np.zeros(trajectory.shape[0])
