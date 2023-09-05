@@ -527,7 +527,7 @@ legend_elements = [
                   label='Naive',
                   ),
         Rectangle((0, 0), width=5, height=3, facecolor="C1", linestyle='solid', edgecolor='k',
-                  label='Encoders',
+                  label='Input-space',
                   ),
         Rectangle((0, 0), width=5, height=3, facecolor="green", linestyle='solid', edgecolor='k',
                   label='Gravel',
@@ -557,8 +557,8 @@ fig.legend(handles=[legend_elements[idx] for idx in legend_order], loc="lower ce
            handlelength=1.25,
            prop={ 'size': 'small' })
 
-ax.set_xlabel("Commanded angular velocity [rad/s]")
-ax.set_ylabel("Commanded linear velocity [m/s]")
+ax.set_xlabel("Body angular velocity [rad/s]")
+ax.set_ylabel("Body linear velocity [m/s]")
 
 fig.savefig("fig_1_upgrade.pdf") # Does not render face pattern
 fig.savefig("fig_1_upgrade.jpg", dpi='figure')
