@@ -126,12 +126,17 @@ class SlipDatasetParser:
         self.imu_yaw_array = self.data[imu_yaw_str_list].to_numpy()
 
     def compute_transitory_vels(self):
+        """Compute transitory velocity of the wheels while filtering the velocity outside
+        of the mecanical limits of the vehicle-terrain. if timestamp are at 
+        a higher frequency then encoder, the same value is output. 
+        """
         transitory_state_mask = self.data['transitory_state_mask'].to_numpy()
         self.transitory_left_vels_array = np.zeros((self.cmd_left_vels_array.shape[0], self.cmd_left_vels_array.shape[1]))
         self.transitory_left_vels_array[0, :] = self.cmd_left_vels_array[0, :]
         self.transitory_right_vels_array = np.zeros((self.cmd_right_vels_array.shape[0], self.cmd_right_vels_array.shape[1]))
         self.transitory_right_vels_array[0, :] = self.cmd_right_vels_array[0, :]
         for i in range(1, self.n_horizons):
+
             if transitory_state_mask[i] == 1:
                 self.transitory_left_vels_array[i, 0] = self.encoder_left_vels_array[i, 0]
                 self.transitory_right_vels_array[i, 0] = self.encoder_right_vels_array[i, 0]
@@ -150,6 +155,8 @@ class SlipDatasetParser:
                 self.transitory_right_vels_array[i, :] = np.clip(self.cmd_right_vels_array[i, :], self.bounded_powertrain_right.min_vel, self.bounded_powertrain_right.max_vel)
 
     def compute_transitory_body_vels(self):
+        """Calculate the body velocity based on a the transitory velocity of the wheels.
+        """
         self.idd_body_vels_x_array = np.zeros((self.cmd_left_vels_array.shape[0], self.cmd_left_vels_array.shape[1]))
         self.idd_body_vels_y_array = np.zeros((self.cmd_left_vels_array.shape[0], self.cmd_left_vels_array.shape[1]))
         self.idd_body_vels_yaw_array = np.zeros((self.cmd_left_vels_array.shape[0], self.cmd_left_vels_array.shape[1]))
@@ -189,6 +196,7 @@ class SlipDatasetParser:
         return np.array([icp_x_spline, icp_y_spline, icp_yaw_spline])
 
     def compute_interpolated_smoothed_icp_states(self):
+        '''Compute a series of splines to use for the spline smoothing '''
         self.icp_x_interpolated_array = np.zeros((self.icp_x_array.shape[0], self.icp_x_array.shape[1]))
         self.icp_y_interpolated_array = np.zeros((self.icp_y_array.shape[0], self.icp_y_array.shape[1]))
         # icp_z_interpolated_array = np.zeros((self.icp_z_array.shape[0], self.icp_z_array.shape[1]))
@@ -205,6 +213,9 @@ class SlipDatasetParser:
             self.icp_yaw_interpolated_array[i, :] = spline_array[2](self.step_time_vector)
 
     def correct_interpolated_smoothed_icp_states_yaw(self):
+        ''' Calculate the interpolated smoothed_icp_states with a spline 
+        and correcting the offset. 
+        '''
         correction_rotmat = np.eye(2)
         self.icp_x_corrected_interpolated_array = np.zeros(self.icp_x_interpolated_array.shape)
         self.icp_y_corrected_interpolated_array = np.zeros(self.icp_y_interpolated_array.shape)

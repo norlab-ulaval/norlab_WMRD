@@ -159,6 +159,9 @@ class DatasetParser:
             self.calib_step[i] = cmd_step_id
 
     def compute_wheel_vels(self):
+        """Calculate the speed of the wheels using their position in odometry? 
+        Only useful for the small husky.
+        """
         self.wheel_left_vel = np.zeros(self.n_points)
         self.wheel_right_vel = np.zeros(self.n_points)
 
@@ -179,12 +182,16 @@ class DatasetParser:
         self.wheel_vels = np.vstack((self.wheel_left_vel, self.wheel_right_vel)).T
 
     def compute_diff_drive_body_vels(self):
+        """Compute the body velocity from the odometry with the ideal diff-drive.
+        """
         self.diff_drive_vels = np.zeros((self.n_points, 3))
 
         for i in range(0, self.n_points):
             self.diff_drive_vels[i, :] = diff_drive(self.wheel_vels[i, :], self.k)
 
     def compute_icp_based_velocity(self):
+        """Compute the icp velocity from the icp algorithm
+        """
         self.icp_vx = np.zeros(self.n_points)
         self.imu_omega = np.zeros(self.n_points)
 
@@ -228,6 +235,7 @@ class DatasetParser:
                                      mode='same')
 
     def create_steady_state_mask(self):
+        
         self.steady_state_mask = np.full(self.n_points, False)
         for i in range(0, self.n_points - 1):
             if self.calib_step[i + 1] != self.calib_step[i]:
@@ -258,6 +266,8 @@ class DatasetParser:
         self.parsed_dataset_df = pd.DataFrame(self.parsed_dataset, columns=cols)
 
     def find_training_horizons(self):
+        """Create the steady state mask based on a fixed training window of 3x2 seconds.
+        """
         # self.parsed_dataset_steady_state = self.parsed_dataset[self.steady_state_mask]
         self.parsed_dataset_steady_state = self.parsed_dataset
         n_points_steady_state = self.parsed_dataset_steady_state.shape[0]
@@ -345,6 +355,14 @@ class DatasetParser:
 
 
     def define_calib_quadrans_mask(self, max_lin_vel, min_lin_vel, max_ang_vel, min_ang_vel):
+        """_summary_
+
+        Args:
+            max_lin_vel (_type_): _description_
+            min_lin_vel (_type_): _description_
+            max_ang_vel (_type_): _description_
+            min_ang_vel (_type_): _description_
+        """
         self.calib_mask = np.full(self.n_points, False)
 
         for i in range(0, self.n_points):

@@ -11,6 +11,9 @@ class Bounded_powertrain:
         self.dt = dt
 
     def compute_bounded_wheel_vels(self, cmd_wheel_vel, prev_wheel_vel, cmd_elapsed_time):
+        ''' Computed the bounded wheel vels filtering out the repetitive timestamp and 
+        calculating a linear interpolation of the speed based on a linear interpolation
+        '''
         if cmd_elapsed_time <= self.time_delay:
             cmd_wheel_vel = prev_wheel_vel
         transitory_wheel_vel = prev_wheel_vel + (1 / self.time_constant) * (cmd_wheel_vel - prev_wheel_vel) * self.dt
