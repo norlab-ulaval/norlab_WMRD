@@ -213,8 +213,7 @@ class SlipDatasetParser:
             self.icp_yaw_interpolated_array[i, :] = spline_array[2](self.step_time_vector)
 
     def correct_interpolated_smoothed_icp_states_yaw(self):
-        ''' Calculate the interpolated smoothed_icp_states with a spline 
-        and correcting the offset. 
+        ''' Correcting the offset on the yaw angle. 
         '''
         correction_rotmat = np.eye(2)
         self.icp_x_corrected_interpolated_array = np.zeros(self.icp_x_interpolated_array.shape)

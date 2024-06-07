@@ -524,5 +524,4 @@ class DatasetParser:
         self.define_steady_state_horizons()
         self.define_calib_quadrans_mask(max_lin_vel, min_lin_vel, max_ang_vel, min_ang_vel)
         self.build_torch_ready_dataset()
-
         self.torch_dataset_df.to_pickle(self.export_dataset_path)
