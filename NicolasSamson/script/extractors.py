@@ -1,0 +1,56 @@
+import numpy as np 
+import pandas as pd
+from models.kinematic.ideal_diff_drive import Ideal_diff_drive
+
+def print_column_unique_column(df):
+    df_columns = list(df.columns)
+    possible_number = ["1","2","3","4","5","6","7","8","9","0"]
+    for i,column in enumerate(df_columns):
+
+        if column[-1] in possible_number:
+
+            if column[-2] in possible_number:
+                df_columns[i] = column[:-3]
+            else:
+                df_columns[i] = column[:-2]
+
+    df_columns_name = pd.Series(df_columns)
+    print(df_columns_name.unique())
+
+def column_type_extractor(df, common_type,verbose=False):
+    """ Extract the np.matrix that represent the 40 columns of all steps of the 
+    specific type. 
+    
+    For example, icp_velx_40 is of the type icp_velx 
+    
+    """
+    columns_mask = df.columns.str.contains(common_type)
+    column_to_take = df.columns[columns_mask]
+    np_results = df[column_to_take].to_numpy().astype('float')
+
+    if verbose == True:
+        print(f"The column type: {common_type}")
+        print(f"The resulting dataframe_shape: {np_results.shape}")
+        print(f"Number of calibrating steps:{np_results.shape[0]}")
+        print(f"Number of measurement by step: {np_results.shape[1]}")
+        print(f"Maximum {np.max(np_results)}")
+        print(f"Minimum {np.min(np_results)}")
+    return np_results
+
+def create_time_axe(rate,n):
+    
+    return np.array(range(0,n)) * rate
+
+def compute_body_vel_IDD( u, robot='warthog-wheel'):
+    if robot == 'warthog-wheel':
+        wheel_radius = 0.3
+        baseline = 1.1652
+        
+        rate = 0.05
+
+        model = Ideal_diff_drive(wheel_radius,baseline,rate)
+    
+    for 
+    body_vel = model.compute_body_vel(u)
+
+    return body_vel

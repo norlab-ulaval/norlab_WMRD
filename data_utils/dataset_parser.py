@@ -7,7 +7,7 @@ from util.transform_algebra import *
 from util.model_func import diff_drive
 from models.kinematic.ideal_diff_drive import Ideal_diff_drive
 
-class DatasetParser:
+class DatasetParser: #DatasetParser(raw_dataset_path, export_dataset_path, training_horizon, robot)
     def __init__(self, raw_dataset_path, export_dataset_path, training_horizon, robot):
         self.dataframe = pd.read_pickle(raw_dataset_path)
         self.dataframe = self.dataframe[3:]
@@ -51,7 +51,7 @@ class DatasetParser:
         run = self.dataframe
 
         self.timestamp = run['ros_time'].to_numpy().astype('double')
-        print(self.timestamp)
+        
         for i in range(0, self.timestamp.shape[0]):
             self.timestamp[i] = self.timestamp[i] * 10 ** (-9)
         self.timestamp = (self.timestamp - self.timestamp[0])# * 10 ** (-9)  # time (s)
@@ -224,15 +224,18 @@ class DatasetParser:
                 #         print(icp_disp)
 
                 self.icp_vels[i, :] = icp_disp / dt
-
+                #print(icp_disp / dt)
                 dt = 0
 
             else:
                 self.icp_vels[i, :] = self.icp_vels[i - 1, :]
-
+        print(np.max(self.icp_vels))
+        
         n_points_convolution = 10
         self.icp_vels[:, 0] = np.convolve(self.icp_vels[:, 0], np.ones((n_points_convolution,)) / n_points_convolution,
                                      mode='same')
+        print("test",np.max(self.icp_vels))
+        
 
     def create_steady_state_mask(self):
         
@@ -262,6 +265,11 @@ class DatasetParser:
                                               self.diff_drive_vels, self.calib_step.reshape(self.n_points, 1),
                                               self.imu_acceleration_x.reshape(self.n_points, 1), self.imu_acceleration_y.reshape(self.n_points, 1),
                                               self.imu_acceleration_z.reshape(self.n_points, 1)), axis=1)
+        #validation 
+        print(self.timestamp.reshape(self.n_points, 1).shape)
+        print(self.cmd_wheel_vels.shape)
+        print(self.icp_states[:, 2:].shape)
+
 
         self.parsed_dataset_df = pd.DataFrame(self.parsed_dataset, columns=cols)
 
@@ -382,6 +390,9 @@ class DatasetParser:
                                       12 + timesteps_per_horizon * 4 + timesteps_per_horizon * 6 + timesteps_per_horizon + 3*timesteps_per_horizon))  # [icp_x, icp_y, icp_yaw, vx0, vomega0, vx1, vomega1, vx2, vomega2, vx3, vomega3]
         torch_output_array = np.zeros((len(self.horizon_starts), 6))  # [icp_x, icp_y, icp_yaw]
 
+        torch_output_array_add_on = np.zeros((len(self.horizon_starts), timesteps_per_horizon * 3))  # [icp_vx_, icp_vy_, icp_yaw]
+            
+        
         for i in range(0, len(self.horizon_starts)):
             # if i != 511:
             #     continue
@@ -446,6 +457,7 @@ class DatasetParser:
                 torch_input_array[i, 452 + j * 3 + 2] = self.parsed_dataset[horizon_start + j, -1]
 
 
+
             # torch_output_array[i, :] = self.parsed_dataset[horizon_end, 6:12] # absolute final pose
             homogeonous_state_position[:3] = self.parsed_dataset[horizon_end, 6:9]
             output_state_transformed_pose = init_state_tf_inv @ homogeonous_state_position
@@ -455,8 +467,20 @@ class DatasetParser:
             torch_output_array[i, 4] = wrap2pi(torch_output_array[i, 4])
             torch_output_array[i, 5] = wrap2pi(torch_output_array[i, 5])
 
-        torch_array = np.concatenate((torch_input_array, torch_output_array), axis=1)
 
+            # The torch addon columns 
+            
+            for j in range(0, timesteps_per_horizon):  # adding icp_vel
+
+                torch_output_array_add_on[0, j * 3] = self.icp_vels[horizon_start + j, 0] # icp_vel_x 
+                torch_output_array_add_on[1, j * 3 + 1] = self.icp_vels[horizon_start + j, 1]# icp_vel_y 
+                torch_output_array_add_on[2, j * 3 + 2] = self.icp_vels[horizon_start + j, 2]# icp_vel_omega 
+        
+        print(torch_output_array.shape)
+        torch_array = np.concatenate((torch_input_array, torch_output_array,torch_output_array_add_on), axis=1)
+        print("test", np.max(self.icp_vels))
+        print("ICIIIIIIIIIIIIIIII",np.max(torch_output_array_add_on))
+        print("test2",self.icp_vels.shape)
         cols = ['init_icp_x', 'init_icp_y', 'init_icp_z', 'init_icp_roll', 'init_icp_pitch', 'init_icp_yaw']
         cols.append('calib_step')
         # cols.append('cmd_vx')
@@ -508,8 +532,19 @@ class DatasetParser:
         cols.append('gt_icp_pitch')
         cols.append('gt_icp_yaw')
 
-        self.torch_dataset_df = pd.DataFrame(torch_array, columns=cols)
 
+        ### Add the column about icp_vx, icp_vy, icp_vz
+        for i in range(0, timesteps_per_horizon):
+            str_icp_vel_x = 'icp_vel_x_' + str(i)
+            str_icp_vel_y = 'icp_vel_y_' + str(i)
+            str_icp_vel_yaw = 'icp_vel_yaw_' + str(i)
+            cols.append(str_icp_vel_x)
+            cols.append(str_icp_vel_y)
+            cols.append(str_icp_vel_yaw)
+        
+        self.torch_dataset_df = pd.DataFrame(torch_array, columns=cols)
+        print(np.max(self.icp_vels))
+        print(np.min(self.icp_vels))
     def process_data(self, max_lin_vel, min_lin_vel, max_ang_vel, min_ang_vel):
         self.extract_values_from_dataset()
         # self.create_calibration_step_array()
