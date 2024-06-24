@@ -1,15 +1,23 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pathlib import Path
+
+
+import sys
+path_root = Path(__file__).parents[1]
+sys.path.append(str(path_root))
 
 
 from data_utils.dataset_parser import DatasetParser
 
-# raw_dataset_path = '/media/dominic/462D-1EE8/rosbags/doughnut_calibs/warthog/depot_1/extracted_data/data.pkl'
-raw_dataset_path = '../norlab_WMRD/data/ral2023_dataset/warthog_wheels/ice/warthog_wheels_ice_rink_data-raw.pkl'
+terrain = 'gravel_1'
 
+# raw_dataset_path = '/media/dominic/462D-1EE8/rosbags/doughnut_calibs/warthog/depot_1/extracted_data/data.pkl'
+raw_dataset_path = '../norlab_WMRD/data/ral2023_dataset/warthog_wheels/'+terrain+'/warthog_wheels_ice_rink_data-raw.pkl'
+raw_dataset_path = '/home/nicolassamson/workspaces_ros_2/my_computer/src/norlab_WMRD/data/ral2023_dataset/warthog_wheels/gravel_1/warthog_wheels_gravel_1_data_raw.pkl'
 # export_dataset_path = '/home/dominic/repos/norlab_WMRD/data/warthog_wheel/doughnut_datasets/depot_1/torch_dataset_all.pkl'
-export_dataset_path = './data/ral2023_dataset/warthog_wheels/ice/torch_dataset_all_v2.pkl'
+export_dataset_path = './data/ral2023_dataset/warthog_wheels/'+terrain+'/torch_dataset_all_v2.pkl'
 
 
 robot = 'warthog-wheel'

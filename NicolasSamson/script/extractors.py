@@ -17,16 +17,28 @@ def print_column_unique_column(df):
     df_columns_name = pd.Series(df_columns)
     print(df_columns_name.unique())
 
-def column_type_extractor(df, common_type,verbose=False):
+def column_type_extractor(df, common_type,
+                        transient_state=True,steady_state=True, verbose=False):
     """ Extract the np.matrix that represent the 40 columns of all steps of the 
     specific type. 
-    
+    column_type_extractor
     For example, icp_velx_40 is of the type icp_velx 
     
     """
     columns_mask = df.columns.str.startswith(common_type)
     column_to_take = df.columns[columns_mask]
-    np_results = df[column_to_take].to_numpy().astype('float')
+
+    local_df = df.copy()
+    if transient_state==False and steady_state==True:
+        mask = local_df.steady_state_mask == 1
+        local_df = local_df.loc[mask]
+    elif steady_state == False and transient_state == True:
+        mask = local_df.steady_state_mask == 0
+        local_df = local_df.loc[mask]
+    elif steady_state == False and transient_state == False:
+        raise ValueError("Both steady state and transient can not be at false")
+    
+    np_results = local_df[column_to_take].to_numpy().astype('float')
 
     if verbose == True:
         message = "_"*8+f"{common_type}"+"_"*8
