@@ -250,12 +250,12 @@ class SlipDatasetParser:
                 yaw_to_rotmat2d(icp_body_to_world_rotmat_2d, self.icp_yaw_interpolated_array[i, j])
                 icp_world_to_body_rotmat_2d = np.linalg.inv(icp_body_to_world_rotmat_2d)
                 icp_next_position_world_2d = np.array([self.icp_x_interpolated_array[i, j+1],
-                                                     self.icp_y_interpolated_array[i, j+1]]).reshape(2,1)
+                                                    self.icp_y_interpolated_array[i, j+1]]).reshape(2,1)
                 icp_next_position_body_2d = icp_world_to_body_rotmat_2d @ icp_next_position_world_2d
                 icp_next_pose_body_2d[:2, 0] = icp_next_position_body_2d[:2, 0]
                 icp_next_pose_body_2d[2, 0] = self.icp_yaw_interpolated_array[i, j+1]
                 icp_current_position_world_2d = np.array([self.icp_x_interpolated_array[i, j],
-                                                     self.icp_y_interpolated_array[i, j]]).reshape(2,1)
+                                                    self.icp_y_interpolated_array[i, j]]).reshape(2,1)
                 icp_current_position_body_2d = icp_world_to_body_rotmat_2d @ icp_current_position_world_2d
                 icp_current_pose_body_2d[:2, 0] = icp_current_position_body_2d[:2, 0]
                 icp_current_pose_body_2d[2, 0] = self.icp_yaw_interpolated_array[i, j]
@@ -265,10 +265,50 @@ class SlipDatasetParser:
                 self.icp_x_single_step_vels_array[i, j] = icp_vel_body_2d[0]
                 self.icp_y_single_step_vels_array[i, j] = icp_vel_body_2d[1]
                 # self.icp_yaw_single_step_vels_array[i, j] = icp_vel_body_2d[2]
+
             self.icp_x_single_step_vels_array[i, -1] = self.icp_x_single_step_vels_array[i, -2]
             self.icp_y_single_step_vels_array[i, -1] = self.icp_y_single_step_vels_array[i, -2]
             # self.icp_yaw_single_step_vels_array[i, -1] = self.icp_yaw_single_step_vels_array[i, -2]
             self.icp_yaw_single_step_vels_array[i, :] = self.imu_yaw_array[i, :]
+    
+    def compute_icp_single_step_vels_RAW(self):
+
+        icp_body_to_world_rotmat_2d = np.eye(2)
+        icp_next_pose_body_2d = np.zeros((3, 1))
+        icp_current_pose_body_2d = np.zeros((3, 1))
+        self.icp_x_single_step_vels_array_RAW= np.zeros((self.icp_x_array.shape[0], self.icp_x_array.shape[1]))
+        self.icp_y_single_step_vels_array_RAW = np.zeros((self.icp_y_array.shape[0], self.icp_y_array.shape[1]))
+        self.icp_yaw_single_step_vels_array_RAW = np.zeros((self.icp_yaw_array.shape[0], self.icp_yaw_array.shape[1]))
+
+        for i in range(0, self.n_horizons): # Pour chaque horizon 
+            for j in range(0, self.icp_x_array.shape[1]-1): # Pour 40 seconde de chaque horizon
+                yaw_to_rotmat2d(icp_body_to_world_rotmat_2d, self.icp_yaw_array[i, j]) 
+                # Extract the world->body
+                icp_world_to_body_rotmat_2d = np.linalg.inv(icp_body_to_world_rotmat_2d)
+                # Extract the next pose
+                icp_next_position_world_2d = np.array([self.icp_x_array[i, j+1],
+                                                    self.icp_y_array[i, j+1]]).reshape(2,1)
+                icp_next_position_body_2d = icp_world_to_body_rotmat_2d @ icp_next_position_world_2d
+                icp_next_pose_body_2d[:2, 0] = icp_next_position_body_2d[:2, 0]
+                icp_next_pose_body_2d[2, 0] = self.icp_yaw_array[i, j+1] 
+                
+                # Extract the current pose
+                icp_current_position_world_2d = np.array([self.icp_x_array[i, j],
+                                                    self.icp_y_array[i, j]]).reshape(2,1)
+                icp_current_position_body_2d = icp_world_to_body_rotmat_2d @ icp_current_position_world_2d
+                icp_current_pose_body_2d[:2, 0] = icp_current_position_body_2d[:2, 0]
+                icp_current_pose_body_2d[2, 0] = self.icp_yaw_array[i, j] 
+                icp_disp_body_2d = icp_next_pose_body_2d - icp_current_pose_body_2d
+                
+                # Calculate the speed
+                icp_vel_body_2d = (icp_disp_body_2d) / self.timestep
+                self.icp_x_single_step_vels_array_RAW[i, j] = icp_vel_body_2d[0]
+                self.icp_y_single_step_vels_array_RAW[i, j] = icp_vel_body_2d[1]
+                self.icp_yaw_single_step_vels_array_RAW[i, j] = icp_vel_body_2d[2]
+
+            self.icp_x_single_step_vels_array_RAW[i, -1] = self.icp_x_single_step_vels_array[i, -2]
+            self.icp_y_single_step_vels_array_RAW[i, -1] = self.icp_y_single_step_vels_array[i, -2]
+            self.icp_yaw_single_step_vels_array_RAW[i, -1] = self.icp_yaw_single_step_vels_array_RAW[i,-2]
 
     # TODO: compute body_vel_disturptions
 
@@ -289,13 +329,15 @@ class SlipDatasetParser:
         self.correct_interpolated_smoothed_icp_states_yaw()
         self.compute_icp_single_step_vels()
         self.compute_body_vel_disturptions()
+        self.compute_icp_single_step_vels_RAW()
 
         new_data_array = np.concatenate((self.transitory_left_vels_array, self.transitory_right_vels_array,
                                          self.idd_body_vels_x_array, self.idd_body_vels_y_array, self.idd_body_vels_yaw_array,
                                               self.icp_x_interpolated_array, self.icp_y_interpolated_array, self.icp_yaw_interpolated_array,
                                               self.icp_x_corrected_interpolated_array, self.icp_y_corrected_interpolated_array,
                                               self.icp_x_single_step_vels_array, self.icp_y_single_step_vels_array, self.icp_yaw_single_step_vels_array,
-                                              self.body_vel_disturption_x_array, self.body_vel_disturption_y_array, self.body_vel_disturption_yaw_array),
+                                              self.body_vel_disturption_x_array, self.body_vel_disturption_y_array, self.body_vel_disturption_yaw_array,
+                                              self.icp_x_single_step_vels_array_RAW,self.icp_y_single_step_vels_array_RAW,self.icp_yaw_single_step_vels_array_RAW),
                                              axis=1)
 
         new_cols = []
@@ -376,8 +418,24 @@ class SlipDatasetParser:
         new_cols.extend(str_body_vel_disturption_y_list)
         new_cols.extend(str_body_vel_disturption_yaw_list)
 
+        str_icp_vel_x_list = []
+        str_icp_vel_y_list = []
+        str_icp_vel_yaw_list = []
+        for i in range(0, 40):
+            str_icp_vel_x_i = 'raw_icp_vel_x_' + str(i)
+            str_icp_vel_y_i = 'raw_icp_vel_y_' + str(i)
+            str_icp_vel_yaw_i = 'raw_icp_vel_yaw_' + str(i)
+            str_icp_vel_x_list.append(str_icp_vel_x_i)
+            str_icp_vel_y_list.append(str_icp_vel_y_i)
+            str_icp_vel_yaw_list.append(str_icp_vel_yaw_i)
+        new_cols.extend(str_icp_vel_x_list)
+        new_cols.extend(str_icp_vel_y_list)
+        new_cols.extend(str_icp_vel_yaw_list)
+        
+        
+
         self.data[new_cols] = new_data_array
 
+        
         self.data.to_pickle(self.export_dataset_path)
-
         return None

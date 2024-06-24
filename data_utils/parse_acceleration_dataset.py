@@ -1,12 +1,16 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
+import pathlib
 
 from data_utils.acceleration_dataset_parser import AccelerationDatasetParser
 
-slip_dataset_path = '/home/dominic/repos/norlab_WMRD/data/ral2023_dataset/warthog_wheels/ice/slip_dataset_all.pkl'
-export_dataset_path = '/home/dominic/repos/norlab_WMRD/data/ral2023_dataset/warthog_wheels/ice/acceleration_dataset.pkl'
+current_workspace_path = pathlib.Path().cwd()
+
+
+slip_dataset_path = current_workspace_path/'data'/'ral2023_dataset'/'warthog_wheels'/'gravel_1'/'slip_dataset_all.pkl'
+export_dataset_path = current_workspace_path/'data'/'ral2023_dataset'/'warthog_wheels'/'gravel_1'/'acceleration_dataset.pkl'
+
 # robot = "husky"
 # robot = "marmotte"
 # robot = "warthog-track"
