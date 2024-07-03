@@ -80,6 +80,10 @@ def compute_operation_points_and_step(res_2d_array,cmd_2d_array):
 
     return operation_point,steps
 
+def compute_steps_command_and_speed(df):
+
+    icp_vel = column_type_extractor(df, common_type,
+                        transient_state=True,steady_state=True, verbose=False)
 
 def normalizer_2d_array(res_2d_array,cmd_2d_array):
     """To normalize the step answer by the first column of the command vector
