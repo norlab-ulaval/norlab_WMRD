@@ -33,7 +33,7 @@ from models.learning.blr_slip_acceleration import SlipAccelerationBayesianLinear
 from models.kinematic.ICR_based import *
 from models.kinematic.Perturbed_unicycle import *
 from models.kinematic.enhanced_kinematic import *
-from NicolasSamson.script.extractors import * 
+from NicolasSamson.drive_datasets.utils.extractors import * 
 from util.transform_algebra import *
 from util.util_func import *
 from data_utils.dataset_parser import *

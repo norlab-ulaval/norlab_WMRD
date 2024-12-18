@@ -1,7 +1,7 @@
 import numpy as np 
 import pandas as pd
 from models.kinematic.ideal_diff_drive import Ideal_diff_drive
-from scipy.optimize import minimize
+
 
 
 def print_column_unique_column(df):
@@ -17,7 +17,9 @@ def print_column_unique_column(df):
                 df_columns[i] = column[:-2]
 
     df_columns_name = pd.Series(df_columns)
-    print(df_columns_name.unique())
+    unique_name = df_columns_name.unique()
+    unique_name.sort()
+    print(unique_name)
 
 def column_type_extractor(df, common_type,
                         transient_state=True,steady_state=True, verbose=False):
@@ -74,7 +76,7 @@ def compute_body_vel_IDD( u, robot='warthog-wheel'):
     return body_vel
 
 def compute_operation_points_and_step(res_2d_array,cmd_2d_array):
-    print(cmd_2d_array.shape)
+    #print(cmd_2d_array.shape)
     operation_point = (res_2d_array[:,0:5].mean(axis=1)).reshape((res_2d_array.shape[0],1))
     command_abso = (cmd_2d_array[:,-5:].mean(axis=1)).reshape((res_2d_array.shape[0],1)) 
     
@@ -82,6 +84,7 @@ def compute_operation_points_and_step(res_2d_array,cmd_2d_array):
     
     steps = command_abso - operation_point
     return operation_point,steps
+
 
 
 def normalizer_2d_array(res_2d_array,cmd_2d_array):
@@ -102,65 +105,24 @@ def normalizer_2d_array(res_2d_array,cmd_2d_array):
     normalized_cmd_2d_array = np.ones(normalize_2d_array.shape)
     return normalize_2d_array,normalized_cmd_2d_array
 
+def reshape_into_2sec_windows(column_to_reshape, n_window=3):
 
-class FirstOrderModelWithDelay():
+    first_index = int(column_to_reshape.shape[0]*n_window)
+    total_info = column_to_reshape.shape[0]* column_to_reshape.shape[1]
+    second_size = int(total_info//first_index)
+    reshape_size = (first_index, second_size)
 
-    def __init__(self,initial_gain,initial_time_constant, inital_delay) -> None:
-        
-        self.X =initial_gain,initial_time_constant,inital_delay 
-        
-    def foptd(self,t, K=1, tau=1, tau_d=0):
-        #tau_d = max(0,tau_d)
-        #tau = max(0,tau)
-        return np.array([K*(1-np.exp(-(time-tau_d)/tau)) if time >= tau_d else 0 for time in t])
+    column_to_reshape = column_to_reshape.reshape(reshape_size)
 
-    def err(self,X,t,y):
-        K,tau,tau_d = X
-        z = self.foptd(t,K,tau,tau_d)
-        iae = sum(abs(z-y)**2)
-        return iae
-    
+    return column_to_reshape
+def reshape_into_6sec_windows(column_to_reshape, n_window=3):
 
-    
+    first_index = column_to_reshape.shape[0]//n_window
+    total_info = column_to_reshape.shape[0]* column_to_reshape.shape[1]
+    second_size = total_info//first_index
+    reshape_size = (first_index, second_size)
 
-    def train(self,t,u_step,y_centered):
-        self.ts = t - t[0]
-        self.us = u_step
-        ys = y_centered/self.us
-        #print(ys.shape)
-        #print(self.ts)
+    column_to_reshape = column_to_reshape.reshape(reshape_size)
 
-        
-        self.K,self.tau,self.tau_d = minimize(self.err,self.X,args=(self.ts,ys)).x
+    return column_to_reshape
 
-        
-        return self.K, self.tau, self.tau_d, # gain, time cosntant, delay, step, point operation
-    
-    def train_all_calib_state(self,time_vec, u_step_array, y_centered_array,operatio_points):
-
-        n_step = u_step_array.shape[0]
-        time_constants_computed = np.zeros((n_step,1))
-        time_delay_computed = np.zeros((n_step))
-        gains_computed = np.zeros((n_step))
-
-        predictions = np.zeros(y_centered_array.shape)
-
-        for calib_step in range(n_step):
-            t = time_vec
-            #y = y_array[calib_step]
-            u_step = u_step_array[calib_step]
-            
-            y_centered = y_centered_array[calib_step,:]
-            operation_point= operatio_points[calib_step]
-            gains_computed[calib_step], time_constants_computed[calib_step], time_delay_computed[calib_step] =  self.train(t,u_step,y_centered)
-
-            predictions[calib_step,:] = self.ypred(operation_point)
-        return gains_computed, time_constants_computed, time_delay_computed,predictions
-    
-    def ypred(self,y_operation_pont):
-
-
-        z = self.foptd(self.ts,self.K,self.tau,self.tau_d)
-        ypred = y_operation_pont + z*self.us
-
-        return ypred
